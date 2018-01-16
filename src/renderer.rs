@@ -9,6 +9,8 @@ use cgmath::prelude::*;
 
 use specs::{FetchMut, Join, ReadStorage, System, VecStorage};
 
+use physics::Physical;
+
 pub struct RendererControl {
     pub should_exit: bool,
 }
@@ -67,15 +69,19 @@ impl Renderer {
 }
 
 impl<'a> System<'a> for Renderer {
-    type SystemData = (FetchMut<'a, RendererControl>, ReadStorage<'a, Renderable>);
+    type SystemData = (
+        FetchMut<'a, RendererControl>,
+        ReadStorage<'a, Renderable>,
+        ReadStorage<'a, Physical>,
+    );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut control, renderables) = data;
+        let (mut control, renderables, physicals) = data;
 
         self.screen.clear(self.clear_color);
 
-        for renderable in renderables.join() {
-            let transform = Matrix4::from_translation(Point2::new(0.0, 0.0).to_vec().extend(0.0));
+        for (renderable, physical) in (&renderables, &physicals).join() {
+            let transform = Matrix4::from_translation(physical.pos.to_vec().extend(0.0));
 
             match renderable.shape {
                 Shape::Ship => {
