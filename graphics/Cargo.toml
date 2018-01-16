@@ -1,0 +1,17 @@
+[package]
+name = "graphics"
+version = "0.1.0"
+authors = ["Peter Higley <phigley@gmail.com>"]
+
+[dependencies]
+gfx = "*"
+gfx_window_glutin = "*"
+gfx_device_gl = "*"
+glutin = "*"
+quick-error = "*"
+cgmath = "*"
+
+[dev-dependencies]
+time = "*"
+specs = "*"
+specs-derive = "*"
