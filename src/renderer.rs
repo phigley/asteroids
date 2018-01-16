@@ -1,12 +1,13 @@
 use graphics::screen::Screen;
+use graphics::shape::Shape as ScreenShape;
 use graphics::events::{Event, Key};
 use graphics::color::Color;
 use graphics::errors::ScreenCreateError;
 
-use cgmath::{Matrix4, Point2, Vector2};
+use cgmath::{Matrix4, Point2};
 use cgmath::prelude::*;
 
-use specs::{FetchMut, System};
+use specs::{FetchMut, Join, ReadStorage, System, VecStorage};
 
 pub struct RendererControl {
     pub should_exit: bool,
@@ -18,32 +19,71 @@ impl RendererControl {
     }
 }
 
+#[derive(Debug)]
+pub enum Shape {
+    Ship,
+}
+
+#[derive(Component, Debug)]
+#[component(VecStorage)]
+pub struct Renderable {
+    shape: Shape,
+    color: Color,
+}
+
+impl Renderable {
+    pub fn new(shape: Shape, color: Color) -> Self {
+        Renderable { shape, color }
+    }
+}
+
 pub struct Renderer {
     screen: Screen,
     clear_color: Color,
+
+    ship_shape: ScreenShape,
 }
 
 impl Renderer {
     pub fn create() -> Result<Self, ScreenCreateError> {
-        let screen = Screen::create("Asteroids")?;
+        let mut screen = Screen::create("Asteroids")?;
         let clear_color = Color::new(0.2, 0.2, 0.5, 1.0);
+
+        let ship_verts = [
+            Point2::new(0.0, 0.025),
+            Point2::new(0.025, -0.025),
+            Point2::new(0.0, -0.0125),
+            Point2::new(-0.025, -0.025),
+        ];
+        let ship_indices = [0, 1, 2, 0, 2, 3];
+        let ship_shape = screen.create_shape(&ship_verts, &ship_indices);
 
         Ok(Renderer {
             screen,
             clear_color,
+            ship_shape,
         })
     }
 }
 
 impl<'a> System<'a> for Renderer {
-    type SystemData = (FetchMut<'a, RendererControl>);
+    type SystemData = (FetchMut<'a, RendererControl>, ReadStorage<'a, Renderable>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let mut control = data;
+        let (mut control, renderables) = data;
 
         self.screen.clear(self.clear_color);
 
-        // Render stuff here.
+        for renderable in renderables.join() {
+            let transform = Matrix4::from_translation(Point2::new(0.0, 0.0).to_vec().extend(0.0));
+
+            match renderable.shape {
+                Shape::Ship => {
+                    self.screen
+                        .draw_shape(&transform, renderable.color, &self.ship_shape)
+                }
+            }
+        }
 
         self.screen.flush();
 
