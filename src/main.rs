@@ -37,7 +37,11 @@ fn run() -> Result<(), AppError> {
     world
         .create_entity()
         .with(Physical::new(Point2::new(0.0, 0.0)))
-        .with(Renderable::new(Shape::Ship, Color::new(1.0, 1.0, 1.0, 1.0)))
+        .with(Renderable::new(
+            Shape::Ship,
+            0.025,
+            Color::new(1.0, 1.0, 1.0, 1.0),
+        ))
         .build();
 
     let mut dispatcher = DispatcherBuilder::new()
