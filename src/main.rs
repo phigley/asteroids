@@ -1,6 +1,7 @@
 extern crate cgmath;
 extern crate graphics;
 extern crate specs;
+extern crate time;
 
 #[macro_use]
 extern crate specs_derive;
@@ -10,6 +11,8 @@ extern crate quick_error;
 
 mod renderer;
 mod physics;
+mod player;
+mod input;
 
 use graphics::color::Color;
 use graphics::errors::ScreenCreateError;
@@ -17,8 +20,10 @@ use specs::{DispatcherBuilder, World};
 
 use cgmath::Point2;
 
-use renderer::{Renderable, Renderer, RendererControl, Shape};
+use renderer::{Renderable, Renderer, Shape};
 use physics::{Physical, Physics};
+use player::{Player, PlayerController};
+use input::Input;
 
 fn main() {
     if let Err(error) = run() {
@@ -32,10 +37,12 @@ fn run() -> Result<(), AppError> {
     let mut world = World::new();
     world.register::<Renderable>();
     world.register::<Physical>();
-    world.add_resource(RendererControl::new());
+    world.register::<Player>();
+    world.add_resource(Input::new());
 
     world
         .create_entity()
+        .with(Player)
         .with(Physical::new(Point2::new(0.0, 0.0)))
         .with(Renderable::new(
             Shape::Ship,
@@ -45,11 +52,12 @@ fn run() -> Result<(), AppError> {
         .build();
 
     let mut dispatcher = DispatcherBuilder::new()
-        .add(Physics::new(), "physics", &[])
+        .add(PlayerController, "player", &[])
+        .add(Physics::new(), "physics", &["player"])
         .add_thread_local(renderer)
         .build();
 
-    while !world.read_resource::<RendererControl>().should_exit {
+    while !world.read_resource::<Input>().should_exit {
         dispatcher.dispatch(&mut world.res);
     }
 

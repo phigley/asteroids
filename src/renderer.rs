@@ -1,3 +1,5 @@
+use std::cmp;
+
 use graphics::screen::Screen;
 use graphics::shape::Shape as ScreenShape;
 use graphics::events::{Event, Key};
@@ -5,21 +7,13 @@ use graphics::color::Color;
 use graphics::errors::ScreenCreateError;
 
 use cgmath::{Matrix4, Point2};
-use cgmath::prelude::*;
 
 use specs::{FetchMut, Join, ReadStorage, System, VecStorage};
 
+use time::PreciseTime;
+
 use physics::Physical;
-
-pub struct RendererControl {
-    pub should_exit: bool,
-}
-
-impl RendererControl {
-    pub fn new() -> Self {
-        RendererControl { should_exit: false }
-    }
-}
+use input::{Action, Input};
 
 #[derive(Debug)]
 pub enum Shape {
@@ -49,6 +43,8 @@ pub struct Renderer {
     clear_color: Color,
 
     ship_shape: ScreenShape,
+
+    previous_time: PreciseTime,
 }
 
 impl Renderer {
@@ -65,23 +61,27 @@ impl Renderer {
         let ship_indices = [0, 1, 2, 0, 2, 3];
         let ship_shape = screen.create_shape(&ship_verts, &ship_indices);
 
+        let previous_time = PreciseTime::now();
+
         Ok(Renderer {
             screen,
             clear_color,
             ship_shape,
+
+            previous_time,
         })
     }
 }
 
 impl<'a> System<'a> for Renderer {
     type SystemData = (
-        FetchMut<'a, RendererControl>,
+        FetchMut<'a, Input>,
         ReadStorage<'a, Renderable>,
         ReadStorage<'a, Physical>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut control, renderables, physicals) = data;
+        let (mut input, renderables, physicals) = data;
 
         self.screen.clear(self.clear_color);
 
@@ -98,8 +98,32 @@ impl<'a> System<'a> for Renderer {
 
         self.screen.flush();
 
+        let current_time = PreciseTime::now();
+        let frame_duration = self.previous_time.to(current_time);
+        let frame_ms = cmp::min(frame_duration.num_milliseconds(), 100);
+        input.frame_time = (frame_ms as f32) * 1e-3f32;
+        self.previous_time = current_time;
+
+        input.actions.clear();
+
         self.screen.poll_events(|event| match event {
-            Event::Exit => control.should_exit = true,
+            Event::Exit => input.should_exit = true,
+
+            Event::KeyPress {
+                key: Key::W,
+                down: true,
+            } => input.actions.push(Action::Forward),
+
+            Event::KeyPress {
+                key: Key::A,
+                down: true,
+            } => input.actions.push(Action::Left),
+
+            Event::KeyPress {
+                key: Key::D,
+                down: true,
+            } => input.actions.push(Action::Right),
+
             _ => (),
         });
     }

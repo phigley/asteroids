@@ -1,12 +1,14 @@
-use specs::{Join, System, VecStorage, WriteStorage};
+use specs::{Fetch, Join, System, VecStorage, WriteStorage};
 use cgmath::{Point2, Vector2};
 use cgmath::prelude::*;
+
+use input::Input;
 
 #[derive(Component, Debug)]
 #[component(VecStorage)]
 pub struct Physical {
     pub pos: Point2<f32>,
-    vel: Vector2<f32>,
+    pub vel: Vector2<f32>,
 }
 
 impl Physical {
@@ -36,12 +38,10 @@ impl Physics {
 }
 
 impl<'a> System<'a> for Physics {
-    type SystemData = (WriteStorage<'a, Physical>);
+    type SystemData = (Fetch<'a, Input>, WriteStorage<'a, Physical>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let mut physical = data;
-
-        let frame_time = 0.0033;
+        let (input, mut physical) = data;
 
         for ref mut physical in (&mut physical).join() {
             // Clamp velocity.
@@ -52,7 +52,7 @@ impl<'a> System<'a> for Physics {
             }
 
             // Apply velocity.
-            physical.pos += physical.vel * frame_time;
+            physical.pos += physical.vel * input.frame_time;
 
             // Perform wrap-around.
             let max_x = self.aspect_ratio;
