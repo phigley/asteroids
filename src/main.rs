@@ -58,7 +58,7 @@ fn run() -> Result<(), AppError> {
         .build();
 
     while !world.read_resource::<Input>().should_exit {
-        dispatcher.dispatch(&mut world.res);
+        dispatcher.dispatch(&world.res);
     }
 
     Ok(())

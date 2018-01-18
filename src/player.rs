@@ -38,7 +38,7 @@ impl<'a> System<'a> for PlayerController {
     fn run(&mut self, data: Self::SystemData) {
         let (input, player, mut physical) = data;
 
-        for (ref player, ref mut physical) in (&player, &mut physical).join() {
+        for (player, mut physical) in (&player, &mut physical).join() {
             if input.actions.accel_forward {
                 let delta_velocity = player.forward_acceleration * input.frame_time;
                 physical.vel += physical
