@@ -1,13 +1,30 @@
-use specs::{Fetch, Join, NullStorage, ReadStorage, System, WriteStorage};
+use specs::{BTreeStorage, Fetch, Join, ReadStorage, System, WriteStorage};
 
-use cgmath::Vector2;
+use cgmath::{Basis2, Rad, Vector2};
+use cgmath::prelude::*;
 
-use input::{Action, Input};
+use input::Input;
 use physics::Physical;
 
-#[derive(Component, Debug, Default)]
-#[component(NullStorage)]
-pub struct Player;
+#[derive(Component, Debug)]
+#[component(BTreeStorage)]
+pub struct Player {
+    forward_acceleration: f32,
+    lateral_acceleration: f32,
+
+    angular_acceleration: Rad<f32>,
+}
+
+impl Player {
+    pub fn new() -> Self {
+        Player {
+            forward_acceleration: 1.0 * 10.0,
+            lateral_acceleration: 0.25 * 10.0,
+
+            angular_acceleration: Rad::full_turn(),
+        }
+    }
+}
 
 pub struct PlayerController;
 
@@ -21,13 +38,36 @@ impl<'a> System<'a> for PlayerController {
     fn run(&mut self, data: Self::SystemData) {
         let (input, player, mut physical) = data;
 
-        for (_, ref mut physical) in (&player, &mut physical).join() {
-            for action in &input.actions {
-                match *action {
-                    Action::Forward => physical.vel += Vector2::new(0.0, 0.1),
-                    Action::Left => physical.vel += Vector2::new(-0.1, 0.1),
-                    Action::Right => physical.vel += Vector2::new(0.1, 0.0),
-                }
+        for (ref player, ref mut physical) in (&player, &mut physical).join() {
+            if input.actions.accel_forward {
+                let delta_velocity = player.forward_acceleration * input.frame_time;
+                physical.vel += physical
+                    .orientation
+                    .rotate_vector(Vector2::new(0.0, delta_velocity));
+            }
+
+            if input.actions.accel_right {
+                let delta_velocity = player.lateral_acceleration * input.frame_time;
+                physical.vel += physical
+                    .orientation
+                    .rotate_vector(Vector2::new(delta_velocity, 0.0));
+            }
+
+            if input.actions.accel_left {
+                let delta_velocity = player.lateral_acceleration * input.frame_time;
+                physical.vel += physical
+                    .orientation
+                    .rotate_vector(Vector2::new(-delta_velocity, 0.0));
+            }
+
+            if input.actions.turn_right {
+                let delta_angle = -player.angular_acceleration * input.frame_time;
+                physical.orientation = physical.orientation * Basis2::from_angle(delta_angle);
+            }
+
+            if input.actions.turn_left {
+                let delta_angle = player.angular_acceleration * input.frame_time;
+                physical.orientation = physical.orientation * Basis2::from_angle(delta_angle);
             }
         }
     }

@@ -1,5 +1,5 @@
 use specs::{Fetch, Join, System, VecStorage, WriteStorage};
-use cgmath::{Point2, Vector2};
+use cgmath::{Basis2, Point2, Vector2};
 use cgmath::prelude::*;
 
 use input::Input;
@@ -9,6 +9,8 @@ use input::Input;
 pub struct Physical {
     pub pos: Point2<f32>,
     pub vel: Vector2<f32>,
+
+    pub orientation: Basis2<f32>,
 }
 
 impl Physical {
@@ -16,6 +18,7 @@ impl Physical {
         Physical {
             pos,
             vel: Vector2::new(0.25, 0.1),
+            orientation: Basis2::one(),
         }
     }
 }

@@ -42,7 +42,7 @@ fn run() -> Result<(), AppError> {
 
     world
         .create_entity()
-        .with(Player)
+        .with(Player::new())
         .with(Physical::new(Point2::new(0.0, 0.0)))
         .with(Renderable::new(
             Shape::Ship,

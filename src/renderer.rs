@@ -6,14 +6,14 @@ use graphics::events::{Event, Key};
 use graphics::color::Color;
 use graphics::errors::ScreenCreateError;
 
-use cgmath::{Matrix4, Point2};
+use cgmath::{Basis2, Matrix2, Matrix4, Point2};
 
 use specs::{FetchMut, Join, ReadStorage, System, VecStorage};
 
 use time::PreciseTime;
 
 use physics::Physical;
-use input::{Action, Input};
+use input::Input;
 
 #[derive(Debug)]
 pub enum Shape {
@@ -86,7 +86,7 @@ impl<'a> System<'a> for Renderer {
         self.screen.clear(self.clear_color);
 
         for (renderable, physical) in (&renderables, &physicals).join() {
-            let transform = create_transform(physical.pos, renderable.scale);
+            let transform = create_transform(physical.pos, physical.orientation, renderable.scale);
 
             match renderable.shape {
                 Shape::Ship => {
@@ -104,37 +104,35 @@ impl<'a> System<'a> for Renderer {
         input.frame_time = (frame_ms as f32) * 1e-3f32;
         self.previous_time = current_time;
 
-        input.actions.clear();
-
         self.screen.poll_events(|event| match event {
             Event::Exit => input.should_exit = true,
 
-            Event::KeyPress {
-                key: Key::W,
-                down: true,
-            } => input.actions.push(Action::Forward),
+            Event::KeyPress { key: Key::W, down } => input.actions.accel_forward = down,
+            Event::KeyPress { key: Key::D, down } => input.actions.accel_right = down,
+            Event::KeyPress { key: Key::A, down } => input.actions.accel_left = down,
 
             Event::KeyPress {
-                key: Key::A,
-                down: true,
-            } => input.actions.push(Action::Left),
-
+                key: Key::Right,
+                down,
+            } => input.actions.turn_right = down,
             Event::KeyPress {
-                key: Key::D,
-                down: true,
-            } => input.actions.push(Action::Right),
+                key: Key::Left,
+                down,
+            } => input.actions.turn_left = down,
 
             _ => (),
         });
     }
 }
 
-fn create_transform(position: Point2<f32>, scale: f32) -> Matrix4<f32> {
+fn create_transform(position: Point2<f32>, orientation: Basis2<f32>, scale: f32) -> Matrix4<f32> {
+    let orientation_m2: Matrix2<f32> = orientation.into();
+
     #[cfg_attr(rustfmt, rustfmt_skip)]
     Matrix4::new( 
-        scale, 0.0, 0.0, 0.0, 
-        0.0, scale, 0.0, 0.0,
+        scale*orientation_m2.x.x, scale*orientation_m2.x.y, 0.0, 0.0, 
+        scale*orientation_m2.y.x, scale*orientation_m2.y.y, 0.0, 0.0,
         0.0, 0.0, scale, 0.0,
         position.x, position.y, 0.0, 1.0
-        )
+    )
 }
