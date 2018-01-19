@@ -41,7 +41,7 @@ pub struct Renderer {
 
 impl Renderer {
     pub fn create() -> Result<Self, ScreenCreateError> {
-        let mut screen = Screen::create("Asteroids")?;
+        let screen = Screen::create("Asteroids")?;
         let clear_color = Color::new(0.2, 0.2, 0.5, 1.0);
 
         let previous_time = PreciseTime::now();
