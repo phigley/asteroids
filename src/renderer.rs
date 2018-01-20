@@ -69,14 +69,15 @@ impl<'a> System<'a> for Renderer {
         self.screen.clear(self.clear_color);
 
         for (shape, mut renderable, physical) in (&shapes, &mut renderables, &physicals).join() {
-            let transform = create_transform(physical.pos, physical.orientation);
+            let render_transform =
+                RenderTransform::new(physical.pos, physical.orientation, shape.radius);
 
             match renderable.screen_shape {
-                Some(ref s) => self.screen.draw_shape(&transform, renderable.color, s),
+                Some(ref s) => render_transform.draw_shape(&mut self.screen, renderable.color, s),
                 ref mut s => {
                     // s is None, so create the shape and render it right away.
                     let new_s = self.screen.create_shape(&shape.verts, &shape.indices);
-                    self.screen.draw_shape(&transform, renderable.color, &new_s);
+                    render_transform.draw_shape(&mut self.screen, renderable.color, &new_s);
                     *s = Some(new_s);
                 }
             };
@@ -112,14 +113,67 @@ impl<'a> System<'a> for Renderer {
     }
 }
 
-fn create_transform(position: Point2<f32>, orientation: Basis2<f32>) -> Matrix4<f32> {
-    let orientation_m2: Matrix2<f32> = orientation.into();
+struct RenderTransform {
+    transforms: [Option<Matrix4<f32>>; 4],
+}
 
+impl RenderTransform {
+    fn new(position: Point2<f32>, orientation: Basis2<f32>, radius: f32) -> Self {
+        let aspect_ratio = 8.0 / 6.0;
+
+        let orientation_m2: Matrix2<f32> = orientation.into();
+
+        let mut transforms = [None; 4];
+
+        transforms[0] = Some(create_transform(&orientation_m2, position.x, position.y));
+
+        let copy_x = if position.x + radius > aspect_ratio {
+            Some(position.x - 2.0 * aspect_ratio)
+        } else if position.x - radius < -aspect_ratio {
+            Some(position.x + 2.0 * aspect_ratio)
+        } else {
+            None
+        };
+
+        let copy_y = if position.y + radius > 1.0 {
+            Some(position.y - 2.0)
+        } else if position.y - radius < -1.0 {
+            Some(position.y + 2.0)
+        } else {
+            None
+        };
+
+        if let Some(adjusted_x) = copy_x {
+            transforms[1] = Some(create_transform(&orientation_m2, adjusted_x, position.y));
+
+            // when x and y need to be adjusted, we will need 4 copies.
+            if let Some(adjusted_y) = copy_y {
+                transforms[2] = Some(create_transform(&orientation_m2, adjusted_x, adjusted_y));
+            }
+        }
+
+        if let Some(adjusted_y) = copy_y {
+            transforms[3] = Some(create_transform(&orientation_m2, position.x, adjusted_y));
+        }
+
+        RenderTransform { transforms }
+    }
+
+    fn draw_shape(&self, screen: &mut Screen, color: Color, shape: &ScreenShape) {
+        for optional_transform in &self.transforms {
+            if let &Some(ref transform) = optional_transform {
+                screen.draw_shape(transform, color, shape);
+            }
+        }
+    }
+}
+
+fn create_transform(orientation: &Matrix2<f32>, x_position: f32, y_position: f32) -> Matrix4<f32> {
     #[cfg_attr(rustfmt, rustfmt_skip)]
     Matrix4::new( 
-        orientation_m2.x.x, orientation_m2.x.y, 0.0, 0.0, 
-        orientation_m2.y.x, orientation_m2.y.y, 0.0, 0.0,
+        orientation.x.x, orientation.x.y, 0.0, 0.0, 
+        orientation.y.x, orientation.y.y, 0.0, 0.0,
         0.0, 0.0, 1.0, 0.0,
-        position.x, position.y, 0.0, 1.0
+        x_position, y_position, 0.0, 1.0
     )
 }
