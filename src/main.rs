@@ -1,5 +1,6 @@
 extern crate cgmath;
 extern crate graphics;
+extern crate rand;
 extern crate specs;
 extern crate time;
 
@@ -36,6 +37,8 @@ fn main() {
 fn run() -> Result<(), AppError> {
     let renderer = Renderer::create()?;
 
+    let mut rng = rand::thread_rng();
+
     let mut world = World::new();
     world.register::<Renderable>();
     world.register::<Physical>();
@@ -48,6 +51,13 @@ fn run() -> Result<(), AppError> {
         .with(Player::new())
         .with(Shape::create_ship())
         .with(Physical::new(Point2::new(0.0, 0.0)))
+        .with(Renderable::new(Color::new(1.0, 1.0, 1.0, 1.0)))
+        .build();
+
+    world
+        .create_entity()
+        .with(Shape::create_asteroid(&mut rng))
+        .with(Physical::new(Point2::new(0.5, 0.5)))
         .with(Renderable::new(Color::new(1.0, 1.0, 1.0, 1.0)))
         .build();
 
