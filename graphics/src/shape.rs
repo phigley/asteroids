@@ -1,6 +1,6 @@
 use gfx;
-use gfx_device_gl;
 use gfx::traits::FactoryExt;
+use gfx_device_gl;
 
 #[derive(Debug, Clone)]
 pub struct Shape {

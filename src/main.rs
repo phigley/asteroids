@@ -10,10 +10,10 @@ extern crate specs_derive;
 #[macro_use]
 extern crate quick_error;
 
-mod renderer;
+mod input;
 mod physics;
 mod player;
-mod input;
+mod renderer;
 mod shape;
 
 use graphics::color::Color;
@@ -22,10 +22,10 @@ use specs::{DispatcherBuilder, World};
 
 use cgmath::Point2;
 
-use renderer::{Renderable, Renderer};
+use input::Input;
 use physics::{Physical, Physics};
 use player::{Player, PlayerController};
-use input::Input;
+use renderer::{Renderable, Renderer};
 use shape::Shape;
 
 fn main() {

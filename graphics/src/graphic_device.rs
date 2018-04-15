@@ -1,7 +1,7 @@
 use gfx;
-use glutin;
 use gfx_device_gl;
 use gfx_window_glutin;
+use glutin;
 
 use glutin::GlContext;
 
@@ -12,8 +12,8 @@ use quick_error::ResultExt;
 
 use cgmath::{Matrix4, Ortho};
 
-use super::errors;
 use super::color;
+use super::errors;
 use super::shape;
 
 pub struct GraphicDevice {
@@ -52,7 +52,7 @@ impl GraphicDevice {
                 .create_pipeline_simple(
                     include_bytes!("simple.vert"),
                     include_bytes!("simple.frag"),
-                    super::pipe::new()
+                    super::pipe::new(),
                 )
                 .context("simple")
         );

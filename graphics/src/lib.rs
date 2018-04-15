@@ -8,12 +8,12 @@ extern crate gfx_device_gl;
 extern crate gfx_window_glutin;
 extern crate glutin;
 
-pub mod events;
-pub mod errors;
-pub mod screen;
 pub mod color;
-pub mod shape;
+pub mod errors;
+pub mod events;
 pub mod model;
+pub mod screen;
+pub mod shape;
 
 mod cursor;
 mod graphic_device;

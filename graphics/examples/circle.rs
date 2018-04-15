@@ -3,8 +3,8 @@ extern crate graphics;
 
 use graphics::{color, events, model, screen};
 
-use cgmath::Matrix4;
 use cgmath::prelude::*;
+use cgmath::Matrix4;
 
 use std::f32;
 

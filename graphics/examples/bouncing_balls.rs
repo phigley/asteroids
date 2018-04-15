@@ -6,12 +6,12 @@ extern crate time;
 #[macro_use]
 extern crate specs_derive;
 
-use graphics::screen::Screen;
-use graphics::events::{Event, Key};
 use graphics::color::Color;
+use graphics::events::{Event, Key};
+use graphics::screen::Screen;
 
-use cgmath::{Matrix4, Point2, Vector2};
 use cgmath::prelude::*;
+use cgmath::{Matrix4, Point2, Vector2};
 
 use time::{Duration, PreciseTime};
 

@@ -1,6 +1,6 @@
-use specs::{Fetch, Join, System, VecStorage, WriteStorage};
-use cgmath::{Basis2, Point2, Vector2};
 use cgmath::prelude::*;
+use cgmath::{Basis2, Point2, Vector2};
+use specs::{Fetch, Join, System, VecStorage, WriteStorage};
 
 use input::Input;
 

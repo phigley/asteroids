@@ -4,8 +4,8 @@ extern crate time;
 
 use graphics::{color, events, model, screen};
 
-use cgmath::{Matrix4, Point2, Rad};
 use cgmath::prelude::*;
+use cgmath::{Matrix4, Point2, Rad};
 
 use time::PreciseTime;
 

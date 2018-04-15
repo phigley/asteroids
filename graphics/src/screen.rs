@@ -2,14 +2,14 @@ use glutin;
 
 use cgmath::{Matrix4, Point2};
 
+use super::color;
+use super::cursor::Cursor;
 use super::errors;
 use super::events;
-use super::color;
-use super::shape;
-use super::model;
-use super::utils;
-use super::cursor::Cursor;
 use super::graphic_device::GraphicDevice;
+use super::model;
+use super::shape;
+use super::utils;
 
 pub struct Screen {
     events_loop: glutin::EventsLoop,

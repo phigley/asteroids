@@ -3,8 +3,8 @@ extern crate graphics;
 
 use graphics::{color, events, model, screen};
 
-use cgmath::{Matrix4, Point2};
 use cgmath::prelude::*;
+use cgmath::{Matrix4, Point2};
 
 fn main() {
     let mut screen = match screen::Screen::create("Triangle") {

@@ -1,7 +1,7 @@
 use specs::{BTreeStorage, Fetch, Join, ReadStorage, System, WriteStorage};
 
-use cgmath::{Basis2, Rad, Vector2};
 use cgmath::prelude::*;
+use cgmath::{Basis2, Rad, Vector2};
 
 use input::Input;
 use physics::Physical;

@@ -1,10 +1,10 @@
 use std::f32;
 
-use cgmath::Point2;
 use cgmath::prelude::*;
+use cgmath::Point2;
 
-use rand::Rng;
 use rand::distributions::{IndependentSample, Range};
+use rand::Rng;
 
 use specs::VecStorage;
 

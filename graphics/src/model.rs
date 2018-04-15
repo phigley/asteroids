@@ -1,5 +1,5 @@
-use super::shape;
 use super::color;
+use super::shape;
 
 use cgmath::Matrix4;
 

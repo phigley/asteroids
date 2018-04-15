@@ -1,10 +1,10 @@
 use std::cmp;
 
-use graphics::screen::Screen;
-use graphics::shape::Shape as ScreenShape;
-use graphics::events::{Event, Key};
 use graphics::color::Color;
 use graphics::errors::ScreenCreateError;
+use graphics::events::{Event, Key};
+use graphics::screen::Screen;
+use graphics::shape::Shape as ScreenShape;
 
 use cgmath::{Basis2, Matrix2, Matrix4, Point2};
 
@@ -12,8 +12,8 @@ use specs::{FetchMut, Join, ReadStorage, System, VecStorage, WriteStorage};
 
 use time::PreciseTime;
 
-use physics::Physical;
 use input::Input;
+use physics::Physical;
 use shape::Shape;
 
 #[derive(Component, Debug)]

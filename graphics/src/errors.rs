@@ -1,5 +1,5 @@
-use std;
 use gfx;
+use std;
 
 quick_error!{
     #[derive(Debug)]

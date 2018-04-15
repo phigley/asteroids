@@ -53,10 +53,15 @@ mod tests {
     use std::f32;
 
     macro_rules! assert_nearly_eq {
-	    ($x:expr, $y:expr, $d:expr) => {
-	        assert!( $x - $y > -$d && $x - $y < $d, "assertion failed: {} ~= {}", $x, $y );
-	    }
-	}
+        ($x:expr, $y:expr, $d:expr) => {
+            assert!(
+                $x - $y > -$d && $x - $y < $d,
+                "assertion failed: {} ~= {}",
+                $x,
+                $y
+            );
+        };
+    }
 
     fn vertex_distance(v0: Vertex, v1: Vertex) -> f32 {
         let dx = v0.pos[0] - v1.pos[0];
