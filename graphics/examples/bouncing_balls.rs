@@ -46,8 +46,6 @@ fn main() {
         .add(ApplyPhysics::new(), "apply_physics", &[])
         .build();
 
-    let mut balls = Vec::new();
-
     let mut pending_ball: Option<PendingBall> = None;
 
     let mut current_pos = Point2::new(0.0, 0.0);
@@ -70,8 +68,7 @@ fn main() {
                 key: Key::R,
                 down: true,
             } => {
-                world.delete_entities(&balls);
-                balls.clear();
+                world.delete_all();
             }
 
             Event::MouseLMB { down } => {
@@ -79,14 +76,12 @@ fn main() {
                     pending_ball = Some(PendingBall::new(current_pos));
                 } else {
                     if let Some(ref pending_ball) = pending_ball {
-                        let new_ball = world
+                        world
                             .create_entity()
                             .with(Position(pending_ball.pos))
                             .with(Velocity(pending_ball.vel))
                             .with(BallRenderable(ball_color))
                             .build();
-
-                        balls.push(new_ball);
                     }
 
                     pending_ball = None;
