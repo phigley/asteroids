@@ -90,7 +90,7 @@ impl Noise {
         let base_radius = max_radius * (1.0 - max_radial_var);
         let radius_var = Range::new(0.0, max_radius * max_radial_var);
 
-        let angle_delta = 2.0 * f32::consts::PI / (num_points as f32);
+        let angle_delta = 2.0 * f32::consts::PI / f32::from(num_points);
 
         let angle_var = Range::new(0.0, max_angle_var * angle_delta);
 
@@ -106,7 +106,7 @@ impl Noise {
     fn apply<R: Rng>(&self, verts: &mut Vec<Point2<f32>>, mut rng: &mut R) {
         for i in 0..self.num_points {
             let angle_delta = self.angle_var.ind_sample(&mut rng);
-            let angle = (i as f32) * self.angle_delta + angle_delta;
+            let angle = f32::from(i) * self.angle_delta + angle_delta;
 
             let radius_delta = self.radius_var.ind_sample(&mut rng);
             let radius = self.base_radius + radius_delta;

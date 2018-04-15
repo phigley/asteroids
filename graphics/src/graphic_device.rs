@@ -61,21 +61,21 @@ impl GraphicDevice {
         let vbuf = factory.create_vertex_buffer(&empty_vertex);
 
         let data = super::pipe::Data {
-            vbuf: vbuf,
+            vbuf,
             view_uniforms: factory.create_constant_buffer(1),
             model_uniforms: factory.create_constant_buffer(1),
             out_color: main_color,
         };
 
         let mut device = GraphicDevice {
-            window: window,
-            encoder: encoder,
-            device: device,
-            data: data,
+            window,
+            encoder,
+            device,
+            data,
             depth_format: main_depth,
-            pso: pso,
+            pso,
 
-            factory: factory,
+            factory,
         };
 
         device.update_projection(width, height);

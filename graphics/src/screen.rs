@@ -31,9 +31,9 @@ impl Screen {
         ));
 
         Ok(Screen {
-            events_loop: events_loop,
+            events_loop,
             implementation: ScreenImplementation {
-                device: device,
+                device,
                 cursor: Cursor::new(initial_width, initial_height),
             },
         })
@@ -65,14 +65,14 @@ impl Screen {
     where
         F: FnMut(events::Event),
     {
-        let ref mut implementation = self.implementation;
+        let implementation = &mut self.implementation;
 
         self.events_loop
             .poll_events(|glutin_event| match glutin_event {
                 glutin::Event::WindowEvent {
-                    window_id: _,
                     event: window_event,
-                } => implementation.handle_window_event(window_event, &mut callback),
+                    ..
+                } => implementation.handle_window_event(&window_event, &mut callback),
 
                 glutin::Event::DeviceEvent { .. } => (),
 
@@ -124,11 +124,11 @@ struct ScreenImplementation {
 }
 
 impl ScreenImplementation {
-    fn handle_window_event<F>(&mut self, window_event: glutin::WindowEvent, callback: &mut F)
+    fn handle_window_event<F>(&mut self, window_event: &glutin::WindowEvent, callback: &mut F)
     where
         F: FnMut(events::Event),
     {
-        match window_event {
+        match *window_event {
             glutin::WindowEvent::KeyboardInput {
                 input:
                     glutin::KeyboardInput {
@@ -169,9 +169,8 @@ impl ScreenImplementation {
             glutin::WindowEvent::CursorMoved {
                 position: (x_pixel, y_pixel),
                 ..
-            } => match self.cursor.mouse_moved(x_pixel, y_pixel) {
-                Some(pos) => callback(events::Event::MouseMove { pos }),
-                None => (),
+            } => if let Some(pos) = self.cursor.mouse_moved(x_pixel, y_pixel) {
+                callback(events::Event::MouseMove { pos });
             },
 
             glutin::WindowEvent::MouseInput { state, button, .. } => {

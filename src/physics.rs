@@ -46,7 +46,7 @@ impl<'a> System<'a> for Physics {
     fn run(&mut self, data: Self::SystemData) {
         let (input, mut physical) = data;
 
-        for ref mut physical in (&mut physical).join() {
+        for physical in &mut (&mut physical).join() {
             // Clamp velocity.
             let initial_speed = physical.vel.magnitude();
 

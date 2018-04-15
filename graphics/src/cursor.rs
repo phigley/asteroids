@@ -40,10 +40,9 @@ impl Cursor {
     }
 
     pub fn mouse_moved(&mut self, x_pixel: f64, y_pixel: f64) -> Option<Point2<f32>> {
-        if x_pixel < 0.0 || y_pixel < 0.0 {
-            self.on_screen = false;
-            None
-        } else if x_pixel as u32 > self.screen_dims.0 || y_pixel as u32 > self.screen_dims.1 {
+        if x_pixel < 0.0 || y_pixel < 0.0 || x_pixel as u32 > self.screen_dims.0
+            || y_pixel as u32 > self.screen_dims.1
+        {
             self.on_screen = false;
             None
         } else {

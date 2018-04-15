@@ -16,9 +16,6 @@ impl Shape {
     ) -> Shape {
         let (vbuf, slice) = factory.create_vertex_buffer_with_slice(vertex_data, indices);
 
-        Shape {
-            vbuf: vbuf,
-            slice: slice,
-        }
+        Shape { vbuf, slice }
     }
 }
