@@ -164,7 +164,7 @@ impl ApplyPhysics {
         let acceleration = Vector2::new(0.0, -0.98);
         let restitution = 0.99f32;
 
-        let max_velocity = 2.0f32;
+        let max_velocity = 3.0f32;
 
         ApplyPhysics {
             acceleration,
@@ -193,9 +193,7 @@ impl<'a> System<'a> for ApplyPhysics {
 
             let speed: f32 = vel.norm();
             if speed > self.max_velocity {
-                println!("old:{}", vel);
                 *vel *= self.max_velocity / speed;
-                println!("new:{}", vel);
             }
 
             *pos += *vel * frame_delta;
