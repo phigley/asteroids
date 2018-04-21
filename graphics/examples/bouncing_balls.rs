@@ -1,5 +1,5 @@
-extern crate cgmath;
 extern crate graphics;
+extern crate nalgebra;
 extern crate specs;
 extern crate time;
 
@@ -10,8 +10,7 @@ use graphics::color::Color;
 use graphics::events::{Event, Key};
 use graphics::screen::Screen;
 
-use cgmath::prelude::*;
-use cgmath::{Matrix4, Point2, Vector2};
+use nalgebra::{Point2, Similarity2, Translation2, UnitComplex, Vector2};
 
 use time::{Duration, PreciseTime};
 
@@ -118,13 +117,21 @@ fn main() {
             for (&BallRenderable(ref color), &Position(ref pos)) in
                 (&ball_renderables, &positions).join()
             {
-                let transform = Matrix4::from_translation(pos.to_vec().extend(0.0));
+                let transform = Similarity2::from_parts(
+                    Translation2::from_vector(pos.coords),
+                    UnitComplex::identity(),
+                    1.0,
+                );
                 screen.draw_shape(&transform, *color, &ball_shape);
             }
         }
 
         if let Some(ref pending_ball) = pending_ball {
-            let transform = Matrix4::from_translation(pending_ball.pos.to_vec().extend(0.0));
+            let transform = Similarity2::from_parts(
+                Translation2::from_vector(pending_ball.pos.coords),
+                UnitComplex::identity(),
+                1.0,
+            );
             screen.draw_shape(&transform, ball_color, &ball_shape);
         }
 
@@ -150,7 +157,6 @@ struct ApplyPhysics {
     acceleration: Vector2<f32>,
     restitution: f32,
     max_velocity: f32,
-    max_velocity_sqr: f32,
 }
 
 impl ApplyPhysics {
@@ -158,14 +164,12 @@ impl ApplyPhysics {
         let acceleration = Vector2::new(0.0, -0.98);
         let restitution = 0.99f32;
 
-        let max_velocity = 0.25f32;
-        let max_velocity_sqr = max_velocity * max_velocity;
+        let max_velocity = 2.0f32;
 
         ApplyPhysics {
             acceleration,
             restitution,
             max_velocity,
-            max_velocity_sqr,
         }
     }
 }
@@ -187,8 +191,11 @@ impl<'a> System<'a> for ApplyPhysics {
         {
             *vel += self.acceleration * frame_delta;
 
-            if vel.magnitude2() > self.max_velocity_sqr {
-                vel.normalize_to(self.max_velocity);
+            let speed: f32 = vel.norm();
+            if speed > self.max_velocity {
+                println!("old:{}", vel);
+                *vel *= self.max_velocity / speed;
+                println!("new:{}", vel);
             }
 
             *pos += *vel * frame_delta;

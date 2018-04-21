@@ -6,7 +6,7 @@ use graphics::events::{Event, Key};
 use graphics::screen::Screen;
 use graphics::shape::Shape as ScreenShape;
 
-use cgmath::{Basis2, Matrix2, Matrix4, Point2};
+use nalgebra::{Point2, Similarity2, Translation2, UnitComplex};
 
 use specs::{FetchMut, Join, ReadStorage, System, VecStorage, WriteStorage};
 
@@ -114,18 +114,16 @@ impl<'a> System<'a> for Renderer {
 }
 
 struct RenderTransform {
-    transforms: [Option<Matrix4<f32>>; 4],
+    transforms: [Option<Similarity2<f32>>; 4],
 }
 
 impl RenderTransform {
-    fn new(position: Point2<f32>, orientation: Basis2<f32>, radius: f32) -> Self {
+    fn new(position: Point2<f32>, orientation: UnitComplex<f32>, radius: f32) -> Self {
         let aspect_ratio = 8.0 / 6.0;
-
-        let orientation_m2: Matrix2<f32> = orientation.into();
 
         let mut transforms = [None; 4];
 
-        transforms[0] = Some(create_transform(&orientation_m2, position.x, position.y));
+        transforms[0] = Some(create_transform(position, orientation));
 
         let copy_x = if position.x + radius > aspect_ratio {
             Some(position.x - 2.0 * aspect_ratio)
@@ -144,16 +142,25 @@ impl RenderTransform {
         };
 
         if let Some(adjusted_x) = copy_x {
-            transforms[1] = Some(create_transform(&orientation_m2, adjusted_x, position.y));
+            transforms[1] = Some(create_transform(
+                Point2::new(adjusted_x, position.y),
+                orientation,
+            ));
 
             // when x and y need to be adjusted, we will need 4 copies.
             if let Some(adjusted_y) = copy_y {
-                transforms[2] = Some(create_transform(&orientation_m2, adjusted_x, adjusted_y));
+                transforms[2] = Some(create_transform(
+                    Point2::new(adjusted_x, adjusted_y),
+                    orientation,
+                ));
             }
         }
 
         if let Some(adjusted_y) = copy_y {
-            transforms[3] = Some(create_transform(&orientation_m2, position.x, adjusted_y));
+            transforms[3] = Some(create_transform(
+                Point2::new(position.x, adjusted_y),
+                orientation,
+            ));
         }
 
         RenderTransform { transforms }
@@ -168,12 +175,6 @@ impl RenderTransform {
     }
 }
 
-fn create_transform(orientation: &Matrix2<f32>, x_position: f32, y_position: f32) -> Matrix4<f32> {
-    #[cfg_attr(rustfmt, rustfmt_skip)]
-    Matrix4::new( 
-        orientation.x.x, orientation.x.y, 0.0, 0.0, 
-        orientation.y.x, orientation.y.y, 0.0, 0.0,
-        0.0, 0.0, 1.0, 0.0,
-        x_position, y_position, 0.0, 1.0
-    )
+fn create_transform(position: Point2<f32>, orientation: UnitComplex<f32>) -> Similarity2<f32> {
+    Similarity2::from_parts(Translation2::new(position.x, position.y), orientation, 1.0)
 }

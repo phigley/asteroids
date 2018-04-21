@@ -1,12 +1,9 @@
-extern crate cgmath;
 extern crate graphics;
+extern crate nalgebra;
 
 use graphics::{color, events, model, screen};
 
-use cgmath::prelude::*;
-use cgmath::Matrix4;
-
-use std::f32;
+use nalgebra::Similarity2;
 
 fn main() {
     let mut screen = match screen::Screen::create("Circle") {
@@ -14,7 +11,7 @@ fn main() {
         Ok(created_screen) => created_screen,
     };
 
-    let translation: Matrix4<f32> = Matrix4::identity();
+    let translation = Similarity2::identity();
 
     let num_vertices = 128;
     let shape = screen.create_circle(0.5, num_vertices);

@@ -1,4 +1,4 @@
-use cgmath::Point2;
+use nalgebra::Point2;
 
 pub struct Cursor {
     on_screen: bool,

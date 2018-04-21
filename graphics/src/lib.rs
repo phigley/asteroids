@@ -3,10 +3,10 @@ extern crate gfx;
 #[macro_use]
 extern crate quick_error;
 
-extern crate cgmath;
 extern crate gfx_device_gl;
 extern crate gfx_window_glutin;
 extern crate glutin;
+extern crate nalgebra;
 
 pub mod color;
 pub mod errors;

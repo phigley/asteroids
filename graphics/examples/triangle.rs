@@ -1,10 +1,9 @@
-extern crate cgmath;
 extern crate graphics;
+extern crate nalgebra;
 
 use graphics::{color, events, model, screen};
 
-use cgmath::prelude::*;
-use cgmath::{Matrix4, Point2};
+use nalgebra::{Point2, Similarity2};
 
 fn main() {
     let mut screen = match screen::Screen::create("Triangle") {
@@ -12,7 +11,7 @@ fn main() {
         Ok(created_screen) => created_screen,
     };
 
-    let translation: Matrix4<f32> = Matrix4::identity();
+    let translation: Similarity2<f32> = Similarity2::identity();
 
     let indices = [0, 1, 2];
     let verts = [

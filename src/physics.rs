@@ -1,5 +1,4 @@
-use cgmath::prelude::*;
-use cgmath::{Basis2, Point2, Vector2};
+use nalgebra::{Point2, UnitComplex, Vector2};
 use specs::{Fetch, Join, System, VecStorage, WriteStorage};
 
 use input::Input;
@@ -10,7 +9,7 @@ pub struct Physical {
     pub pos: Point2<f32>,
     pub vel: Vector2<f32>,
 
-    pub orientation: Basis2<f32>,
+    pub orientation: UnitComplex<f32>,
 }
 
 impl Physical {
@@ -18,7 +17,7 @@ impl Physical {
         Physical {
             pos,
             vel: Vector2::new(0.25, 0.1),
-            orientation: Basis2::one(),
+            orientation: UnitComplex::identity(),
         }
     }
 }
@@ -48,7 +47,7 @@ impl<'a> System<'a> for Physics {
 
         for physical in &mut (&mut physical).join() {
             // Clamp velocity.
-            let initial_speed = physical.vel.magnitude();
+            let initial_speed = physical.vel.norm();
 
             if initial_speed > self.max_speed {
                 physical.vel *= self.max_speed / initial_speed;

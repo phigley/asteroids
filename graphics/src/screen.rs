@@ -1,6 +1,6 @@
 use glutin;
 
-use cgmath::{Matrix4, Point2};
+use nalgebra::{Matrix4, Point2, Similarity2};
 
 use super::color;
 use super::cursor::Cursor;
@@ -90,21 +90,28 @@ impl Screen {
 
     /// Draws a model.
     pub fn draw_model(&mut self, model: &model::Model) {
-        self.implementation
-            .device
-            .draw_shape(&model.transform, model.color, &model.shape);
+        self.draw_shape(&model.transform, model.color, &model.shape);
     }
 
     // Draw a flat colored shape.
     pub fn draw_shape(
         &mut self,
-        transform: &Matrix4<f32>,
+        transform: &Similarity2<f32>,
         color: color::Color,
         shape: &shape::Shape,
     ) {
+        let vals = transform.to_homogeneous();
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let draw_transform = Matrix4::new(
+            vals[0], vals[3], 0.0, vals[6],
+            vals[1], vals[4], 0.0, vals[7],
+            0.0, 0.0, 0.0, 0.0,
+            vals[2], vals[5], 0.0, vals[8]);
+        // draw_transform_2d.insert_column(2, 0.0).insert_row(2, 0.0);
+
         self.implementation
             .device
-            .draw_shape(transform, color, shape);
+            .draw_shape(&draw_transform, color, shape);
     }
 
     /// Issues the draw commands to the GPU.

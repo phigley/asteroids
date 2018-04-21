@@ -1,11 +1,10 @@
-extern crate cgmath;
 extern crate graphics;
+extern crate nalgebra;
 extern crate time;
 
 use graphics::{color, events, model, screen};
 
-use cgmath::prelude::*;
-use cgmath::{vec3, Matrix4};
+use nalgebra::{Similarity2, Vector2};
 
 use time::PreciseTime;
 
@@ -19,15 +18,20 @@ fn main() {
 
     let shape = screen.create_circle(0.02, 64);
 
-    let fixed_scale = Matrix4::from_scale(1.5);
-    let chase_scale = Matrix4::from_scale(1.0);
-    let follow_scale = Matrix4::from_scale(0.5);
+    let fixed_scale = 1.5;
+    let chase_scale = 1.0;
+    let follow_scale = 0.5;
 
     let chase_color = color::Color::new(1.0, 1.0, 1.0, 0.5);
-    let mut chase_model = model::Model::new(&shape, chase_color, chase_scale);
+    let mut chase_model =
+        model::Model::new(&shape, chase_color, Similarity2::from_scaling(chase_scale));
 
     let follow_color = color::Color::new(1.0, 1.0, 0.0, 0.5);
-    let mut follow_model = model::Model::new(&shape, follow_color, follow_scale);
+    let mut follow_model = model::Model::new(
+        &shape,
+        follow_color,
+        Similarity2::from_scaling(follow_scale),
+    );
 
     let colors = [
         color::Color::new(1.0, 0.0, 0.0, 1.0),
@@ -37,8 +41,7 @@ fn main() {
 
     let mut current_color = 0;
 
-    let fixed_translation: Matrix4<f32> =
-        Matrix4::from_translation(vec3(0.25, 0.25, 0.0)) * fixed_scale;
+    let fixed_translation = Similarity2::new(Vector2::new(0.25f32, 0.25f32), 0.0f32, fixed_scale);
     let mut fixed_model = model::Model::new(&shape, colors[current_color], fixed_translation);
 
     let clear_color = color::Color::new(0.1, 0.2, 0.3, 1.0);
@@ -62,12 +65,10 @@ fn main() {
         screen.poll_events(|event| match event {
             events::Event::Exit => should_exit = true,
             events::Event::Resize { mouse_pos } => {
-                follow_model.transform =
-                    Matrix4::from_translation(mouse_pos.to_vec().extend(0.0)) * follow_scale;
+                follow_model.transform = Similarity2::new(mouse_pos.coords, 0.0f32, follow_scale);
             }
             events::Event::MouseMove { pos } => {
-                follow_model.transform =
-                    Matrix4::from_translation(pos.to_vec().extend(0.0)) * follow_scale;
+                follow_model.transform = Similarity2::new(pos.coords, 0.0f32, follow_scale);
             }
             events::Event::MouseLMB { down } => {
                 if down == false {
@@ -87,7 +88,7 @@ fn main() {
 
         let full_delta_pos = current_mouse_pos - previous_mouse_pos;
 
-        let interp_percent = if full_delta_pos.magnitude2() > 1e-8f32 {
+        let interp_percent = if full_delta_pos.norm() > 1e-8f32 {
             let time_delta = previous_time.to(current_time).num_milliseconds() as f32;
             1.0 - catchup_percent.powf(time_delta / catchup_delay)
         } else {
@@ -96,8 +97,7 @@ fn main() {
 
         let new_chase_pos = previous_mouse_pos + full_delta_pos * interp_percent;
 
-        chase_model.transform =
-            Matrix4::from_translation(new_chase_pos.to_vec().extend(0.0)) * chase_scale;
+        chase_model.transform = Similarity2::new(new_chase_pos.coords, 0.0f32, chase_scale);
 
         previous_mouse_pos = new_chase_pos;
         previous_time = current_time;

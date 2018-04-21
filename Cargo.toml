@@ -10,6 +10,6 @@ graphics = { path = "./graphics" }
 specs = "*"
 specs-derive = "*"
 quick-error = "*"
-cgmath = "*"
+nalgebra = "*"
 time = "*"
 rand = "*"

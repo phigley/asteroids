@@ -10,7 +10,7 @@ use gfx::Device;
 
 use quick_error::ResultExt;
 
-use cgmath::{Matrix4, Ortho};
+use nalgebra::{Matrix4, Orthographic3};
 
 use super::color;
 use super::errors;
@@ -93,29 +93,15 @@ impl GraphicDevice {
     }
 
     fn update_projection(&mut self, width: u32, height: u32) {
-        let initial_projection: Ortho<f32> = if width >= height {
+        let initial_projection: Orthographic3<f32> = if width >= height {
             let view_ratio = width as f32 / height as f32;
-            Ortho {
-                left: -view_ratio,
-                right: view_ratio,
-                top: 1.0,
-                bottom: -1.0,
-                near: -1.0,
-                far: 1.0,
-            }
+            Orthographic3::new(-view_ratio, view_ratio, -1.0, 1.0, -1.0, 1.0)
         } else {
             let view_ratio = height as f32 / width as f32;
-            Ortho {
-                left: -1.0,
-                right: 1.0,
-                top: view_ratio,
-                bottom: -view_ratio,
-                near: -1.0,
-                far: 1.0,
-            }
+            Orthographic3::new(-1.0, 1.0, -view_ratio, view_ratio, -1.0, 1.0)
         };
 
-        let initial_projection_matrix: Matrix4<f32> = initial_projection.into();
+        let initial_projection_matrix: Matrix4<f32> = initial_projection.to_homogeneous();
 
         let initial_view_uniforms = super::ViewUniforms {
             projection: initial_projection_matrix.into(),

@@ -1,11 +1,10 @@
-extern crate cgmath;
 extern crate graphics;
+extern crate nalgebra;
 extern crate time;
 
 use graphics::{color, events, model, screen};
 
-use cgmath::prelude::*;
-use cgmath::{Matrix4, Point2, Rad};
+use nalgebra::{Point2, Similarity2, Vector2};
 
 use time::PreciseTime;
 
@@ -14,8 +13,6 @@ fn main() {
         Err(create_error) => panic!(create_error.to_string()),
         Ok(created_screen) => created_screen,
     };
-
-    let translation: Matrix4<f32> = Matrix4::identity();
 
     let indices = [0, 1, 2, 0, 2, 3];
 
@@ -30,7 +27,7 @@ fn main() {
 
     let yellow = color::Color::new(1.0, 1.0, 0.0, 1.0);
 
-    let mut model = model::Model::new(&shape, yellow, translation);
+    let mut model = model::Model::new(&shape, yellow, Similarity2::identity());
 
     let clear_color = color::Color::new(0.1, 0.2, 0.3, 1.0);
 
@@ -44,9 +41,9 @@ fn main() {
 
         let delta_period = delta_time_ms % period_ms;
         let delta_fraction = (delta_period as f32) / (period_ms as f32);
-        let current_angle = -Rad::full_turn() * delta_fraction;
+        let current_angle = -std::f32::consts::PI * 2.0 * delta_fraction;
 
-        model.transform = Matrix4::from_angle_z(current_angle);
+        model.transform = Similarity2::new(Vector2::new(0.0f32, 0.0f32), current_angle, 1.0f32);
 
         screen.clear(clear_color);
         screen.draw_model(&model);

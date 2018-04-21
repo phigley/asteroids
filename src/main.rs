@@ -1,5 +1,5 @@
-extern crate cgmath;
 extern crate graphics;
+extern crate nalgebra;
 extern crate rand;
 extern crate specs;
 extern crate time;
@@ -20,7 +20,7 @@ use graphics::color::Color;
 use graphics::errors::ScreenCreateError;
 use specs::{DispatcherBuilder, World};
 
-use cgmath::Point2;
+use nalgebra::Point2;
 
 use input::Input;
 use physics::{Physical, Physics};

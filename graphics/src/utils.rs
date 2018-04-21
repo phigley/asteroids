@@ -1,5 +1,3 @@
-extern crate cgmath;
-
 use std::f32;
 
 pub fn build_circle(radius: f32, num_vertices: usize) -> (Vec<super::Vertex>, Vec<u16>) {

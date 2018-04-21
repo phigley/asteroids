@@ -1,7 +1,7 @@
 use std::f32;
 
-use cgmath::prelude::*;
-use cgmath::Point2;
+use nalgebra;
+use nalgebra::Point2;
 
 use rand::distributions::{IndependentSample, Range};
 use rand::Rng;
@@ -18,11 +18,11 @@ pub struct Shape {
 
 impl Shape {
     pub fn new(verts: Vec<Point2<f32>>, indices: Vec<u16>) -> Self {
-        let origin = Point2::origin();
+        let origin = &Point2::origin();
         let mut radius = 0.0;
 
         for v in &verts {
-            let dist = v.distance(origin);
+            let dist = nalgebra::distance(v, origin);
 
             if dist > radius {
                 radius = dist;
