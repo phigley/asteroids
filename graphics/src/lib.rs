@@ -7,6 +7,7 @@ extern crate gfx_device_gl;
 extern crate gfx_window_glutin;
 extern crate glutin;
 extern crate nalgebra;
+extern crate time;
 
 pub mod color;
 pub mod errors;
@@ -14,6 +15,9 @@ pub mod events;
 pub mod model;
 pub mod screen;
 pub mod shape;
+mod frame_timer;
+
+pub use frame_timer::FrameTimer;
 
 mod cursor;
 mod graphic_device;

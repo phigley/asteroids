@@ -2,7 +2,6 @@ extern crate graphics;
 extern crate nalgebra;
 extern crate rand;
 extern crate specs;
-extern crate time;
 
 #[macro_use]
 extern crate specs_derive;

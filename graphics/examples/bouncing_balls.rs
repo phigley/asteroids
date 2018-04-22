@@ -1,7 +1,6 @@
 extern crate graphics;
 extern crate nalgebra;
 extern crate specs;
-extern crate time;
 
 #[macro_use]
 extern crate specs_derive;
@@ -9,10 +8,9 @@ extern crate specs_derive;
 use graphics::color::Color;
 use graphics::events::{Event, Key};
 use graphics::screen::Screen;
+use graphics::FrameTimer;
 
 use nalgebra::{Point2, Similarity2, Translation2, UnitComplex, Vector2};
-
-use time::{Duration, PreciseTime};
 
 use specs::{DispatcherBuilder, Fetch, Join, System, VecStorage, World, WriteStorage};
 
@@ -32,14 +30,14 @@ fn main() {
     let mouse_averge_factor = 0.05f32;
     let mouse_average_delay = 0.5f32;
 
-    let mut previous_time = PreciseTime::now();
-
     let mut world = World::new();
     world.register::<Position>();
     world.register::<Velocity>();
     world.register::<BallRenderable>();
 
-    world.add_resource(FrameTime(Duration::milliseconds(0)));
+    world.add_resource(FrameTime(0.0));
+
+    let mut frame_timer = FrameTimer::new();
 
     let mut dispatcher = DispatcherBuilder::new()
         .add(ApplyPhysics::new(), "apply_physics", &[])
@@ -53,12 +51,10 @@ fn main() {
     while !should_exit {
         screen.clear(clear_color);
 
-        let current_time = PreciseTime::now();
-        let delta_time = previous_time.to(current_time);
+        let frame_delta = frame_timer.update(10, 0.1);
 
-        *world.write_resource::<FrameTime>() = FrameTime(delta_time);
+        *world.write_resource::<FrameTime>() = FrameTime(frame_delta);
 
-        let frame_delta = (delta_time.num_milliseconds() as f32) * 1e-3f32;
 
         screen.poll_events(|event| match event {
             Event::Exit => should_exit = true,
@@ -136,13 +132,11 @@ fn main() {
         }
 
         screen.flush();
-
-        previous_time = current_time;
     }
 }
 
 #[derive(Debug)]
-struct FrameTime(Duration);
+struct FrameTime(f32);
 
 #[derive(Component, Debug)]
 #[component(VecStorage)]
@@ -184,8 +178,7 @@ impl<'a> System<'a> for ApplyPhysics {
     fn run(&mut self, data: Self::SystemData) {
         let (frame_time, mut pos, mut vel) = data;
 
-        let delta_time = frame_time.0;
-        let frame_delta = (delta_time.num_milliseconds() as f32) * 1e-3f32;
+        let frame_delta = frame_time.0;
 
         for (&mut Position(ref mut pos), &mut Velocity(ref mut vel)) in (&mut pos, &mut vel).join()
         {

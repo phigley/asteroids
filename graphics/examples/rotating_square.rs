@@ -1,12 +1,9 @@
 extern crate graphics;
 extern crate nalgebra;
-extern crate time;
 
-use graphics::{color, events, model, screen};
+use graphics::{FrameTimer, color, events, model, screen};
 
 use nalgebra::{Point2, Similarity2, Vector2};
-
-use time::PreciseTime;
 
 fn main() {
     let mut screen = match screen::Screen::create("Rotating Square") {
@@ -31,13 +28,14 @@ fn main() {
 
     let clear_color = color::Color::new(0.1, 0.2, 0.3, 1.0);
 
-    let start_time = PreciseTime::now();
+    let mut frame_timer = FrameTimer::new();
     let period_ms = 5000;
 
     let mut should_exit = false;
     while !should_exit {
-        let current_time = PreciseTime::now();
-        let delta_time_ms = start_time.to(current_time).num_milliseconds();
+
+        frame_timer.update(10, 0.1);
+        let delta_time_ms = frame_timer.elapsed().num_milliseconds();
 
         let delta_period = delta_time_ms % period_ms;
         let delta_fraction = (delta_period as f32) / (period_ms as f32);

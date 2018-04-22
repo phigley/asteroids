@@ -11,8 +11,8 @@ gfx_device_gl = "*"
 glutin = "0.13"
 quick-error = "*"
 nalgebra = "*"
+time = "*"
 
 [dev-dependencies]
-time = "*"
 specs = "*"
 specs-derive = "*"

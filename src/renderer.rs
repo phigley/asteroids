@@ -1,16 +1,13 @@
-use std::cmp;
-
 use graphics::color::Color;
 use graphics::errors::ScreenCreateError;
 use graphics::events::{Event, Key};
 use graphics::screen::Screen;
 use graphics::shape::Shape as ScreenShape;
+use graphics::FrameTimer;
 
 use nalgebra::{Point2, Similarity2, Translation2, UnitComplex};
 
 use specs::{FetchMut, Join, ReadStorage, System, VecStorage, WriteStorage};
-
-use time::PreciseTime;
 
 use input::Input;
 use physics::Physical;
@@ -36,7 +33,7 @@ pub struct Renderer {
     screen: Screen,
     clear_color: Color,
 
-    previous_time: PreciseTime,
+    frame_timer: FrameTimer,
 }
 
 impl Renderer {
@@ -44,13 +41,11 @@ impl Renderer {
         let screen = Screen::create("Asteroids")?;
         let clear_color = Color::new(0.2, 0.2, 0.5, 1.0);
 
-        let previous_time = PreciseTime::now();
-
         Ok(Renderer {
             screen,
             clear_color,
 
-            previous_time,
+            frame_timer: FrameTimer::new(),
         })
     }
 }
@@ -86,11 +81,7 @@ impl<'a> System<'a> for Renderer {
 
         self.screen.flush();
 
-        let current_time = PreciseTime::now();
-        let frame_duration = self.previous_time.to(current_time);
-        let frame_ms = cmp::min(frame_duration.num_milliseconds(), 100);
-        input.frame_time = (frame_ms as f32) * 1e-3f32;
-        self.previous_time = current_time;
+        input.frame_time = self.frame_timer.update(10, 0.1);
 
         self.screen.poll_events(|event| match event {
             Event::Exit => input.should_exit = true,

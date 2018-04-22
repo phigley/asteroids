@@ -2,13 +2,9 @@ extern crate graphics;
 extern crate nalgebra;
 extern crate time;
 
-use graphics::{color, events, model, screen};
+use graphics::{FrameTimer, color, events, model, screen};
 
 use nalgebra::{Similarity2, Vector2};
-
-use time::PreciseTime;
-
-use std::f32;
 
 fn main() {
     let mut screen = match screen::Screen::create("Chase Cursor") {
@@ -25,6 +21,8 @@ fn main() {
     let chase_color = color::Color::new(1.0, 1.0, 1.0, 0.5);
     let mut chase_model =
         model::Model::new(&shape, chase_color, Similarity2::from_scaling(chase_scale));
+
+    let mut frame_timer = FrameTimer::new();
 
     let follow_color = color::Color::new(1.0, 1.0, 0.0, 0.5);
     let mut follow_model = model::Model::new(
@@ -47,20 +45,21 @@ fn main() {
     let clear_color = color::Color::new(0.1, 0.2, 0.3, 1.0);
 
     // catchup_percent of the distance is remaining after catchup_delay time has passed.
-    // time is in ms
     let catchup_percent = 0.05f32;
-    let catchup_delay = 1000.0f32;
+    let catchup_delay = 1.0f32;
 
     let mut previous_mouse_pos = screen.get_mouse_pos();
-    let mut previous_time = PreciseTime::now();
 
     let mut should_exit = false;
     while !should_exit {
+
         screen.clear(clear_color);
         screen.draw_model(&fixed_model);
         screen.draw_model(&chase_model);
         screen.draw_model(&follow_model);
         screen.flush();
+
+        let frame_time = frame_timer.update(16, 0.1);
 
         screen.poll_events(|event| match event {
             events::Event::Exit => should_exit = true,
@@ -83,14 +82,12 @@ fn main() {
             _ => (),
         });
 
-        let current_time = PreciseTime::now();
         let current_mouse_pos = screen.get_mouse_pos();
 
         let full_delta_pos = current_mouse_pos - previous_mouse_pos;
 
         let interp_percent = if full_delta_pos.norm() > 1e-8f32 {
-            let time_delta = previous_time.to(current_time).num_milliseconds() as f32;
-            1.0 - catchup_percent.powf(time_delta / catchup_delay)
+            1.0 - catchup_percent.powf(frame_time / catchup_delay)
         } else {
             1.0f32
         };
@@ -100,6 +97,5 @@ fn main() {
         chase_model.transform = Similarity2::new(new_chase_pos.coords, 0.0f32, chase_scale);
 
         previous_mouse_pos = new_chase_pos;
-        previous_time = current_time;
     }
 }
