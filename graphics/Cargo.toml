@@ -5,10 +5,9 @@ authors = ["Peter Higley <phigley@gmail.com>"]
 
 [dependencies]
 gfx = "*"
-gfx_window_glutin = "0.21"
+gfx_window_glutin = "*"
 gfx_device_gl = "*"
-# gfx_window_glutin depends on glutin 0.13
-glutin = "0.13"
+glutin = "*"
 quick-error = "*"
 nalgebra = "*"
 time = "*"
