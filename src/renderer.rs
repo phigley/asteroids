@@ -7,14 +7,14 @@ use graphics::FrameTimer;
 
 use nalgebra::{Point2, Similarity2, Translation2, UnitComplex};
 
-use specs::{FetchMut, Join, ReadStorage, System, VecStorage, WriteStorage};
+use specs::{Join, ReadStorage, System, VecStorage, Write, WriteStorage};
 
 use input::Input;
 use physics::Physical;
 use shape::Shape;
 
 #[derive(Component, Debug)]
-#[component(VecStorage)]
+#[storage(VecStorage)]
 pub struct Renderable {
     screen_shape: Option<ScreenShape>,
     color: Color,
@@ -52,7 +52,7 @@ impl Renderer {
 
 impl<'a> System<'a> for Renderer {
     type SystemData = (
-        FetchMut<'a, Input>,
+        Write<'a, Input>,
         ReadStorage<'a, Shape>,
         WriteStorage<'a, Renderable>,
         ReadStorage<'a, Physical>,

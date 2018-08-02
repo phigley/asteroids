@@ -1,10 +1,10 @@
 use nalgebra::{Point2, UnitComplex, Vector2};
-use specs::{Fetch, Join, System, VecStorage, WriteStorage};
+use specs::{Join, Read, System, VecStorage, WriteStorage};
 
 use input::Input;
 
 #[derive(Component, Debug)]
-#[component(VecStorage)]
+#[storage(VecStorage)]
 pub struct Physical {
     pub pos: Point2<f32>,
     pub vel: Vector2<f32>,
@@ -40,7 +40,7 @@ impl Physics {
 }
 
 impl<'a> System<'a> for Physics {
-    type SystemData = (Fetch<'a, Input>, WriteStorage<'a, Physical>);
+    type SystemData = (Read<'a, Input>, WriteStorage<'a, Physical>);
 
     fn run(&mut self, data: Self::SystemData) {
         let (input, mut physical) = data;

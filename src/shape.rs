@@ -3,13 +3,13 @@ use std::f32;
 use nalgebra;
 use nalgebra::Point2;
 
-use rand::distributions::{IndependentSample, Range};
+use rand::distributions::{Distribution, Range};
 use rand::Rng;
 
 use specs::VecStorage;
 
 #[derive(Component, Debug)]
-#[component(VecStorage)]
+#[storage(VecStorage)]
 pub struct Shape {
     pub verts: Vec<Point2<f32>>,
     pub indices: Vec<u16>,
@@ -105,10 +105,10 @@ impl Noise {
 
     fn apply<R: Rng>(&self, verts: &mut Vec<Point2<f32>>, mut rng: &mut R) {
         for i in 0..self.num_points {
-            let angle_delta = self.angle_var.ind_sample(&mut rng);
+            let angle_delta = self.angle_var.sample(&mut rng);
             let angle = f32::from(i) * self.angle_delta + angle_delta;
 
-            let radius_delta = self.radius_var.ind_sample(&mut rng);
+            let radius_delta = self.radius_var.sample(&mut rng);
             let radius = self.base_radius + radius_delta;
 
             let x = radius * angle.cos();

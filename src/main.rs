@@ -17,7 +17,7 @@ mod shape;
 
 use graphics::color::Color;
 use graphics::errors::ScreenCreateError;
-use specs::{DispatcherBuilder, World};
+use specs::{Builder, DispatcherBuilder, World};
 
 use nalgebra::Point2;
 
@@ -61,9 +61,9 @@ fn run() -> Result<(), AppError> {
         .build();
 
     let mut dispatcher = DispatcherBuilder::new()
-        .add(PlayerController, "player", &[])
-        .add(Physics::new(), "physics", &["player"])
-        .add_thread_local(renderer)
+        .with(PlayerController, "player", &[])
+        .with(Physics::new(), "physics", &["player"])
+        .with_thread_local(renderer)
         .build();
 
     while !world.read_resource::<Input>().should_exit {

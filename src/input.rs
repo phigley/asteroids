@@ -1,3 +1,4 @@
+#[derive(Default)]
 pub struct Actions {
     pub accel_forward: bool,
     pub accel_right: bool,
@@ -20,6 +21,7 @@ impl Actions {
     }
 }
 
+#[derive(Default)]
 pub struct Input {
     pub actions: Actions,
     pub should_exit: bool,

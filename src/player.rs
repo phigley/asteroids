@@ -1,6 +1,7 @@
 use std;
 
-use specs::{BTreeStorage, Fetch, Join, ReadStorage, System, WriteStorage};
+use specs::storage::BTreeStorage;
+use specs::{Join, Read, ReadStorage, System, WriteStorage};
 
 use nalgebra::{UnitComplex, Vector2};
 
@@ -8,7 +9,7 @@ use input::Input;
 use physics::Physical;
 
 #[derive(Component, Debug)]
-#[component(BTreeStorage)]
+#[storage(BTreeStorage)]
 pub struct Player {
     forward_acceleration: f32,
     lateral_acceleration: f32,
@@ -31,7 +32,7 @@ pub struct PlayerController;
 
 impl<'a> System<'a> for PlayerController {
     type SystemData = (
-        Fetch<'a, Input>,
+        Read<'a, Input>,
         ReadStorage<'a, Player>,
         WriteStorage<'a, Physical>,
     );

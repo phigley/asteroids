@@ -3,6 +3,7 @@ use gfx_device_gl;
 use gfx_window_glutin;
 use glutin;
 
+use glutin::dpi::{LogicalSize, PhysicalSize};
 use glutin::GlContext;
 
 use gfx::traits::FactoryExt;
@@ -29,14 +30,16 @@ pub struct GraphicDevice {
 
 impl GraphicDevice {
     pub fn new(
-        width: u32,
-        height: u32,
+        width: f64,
+        height: f64,
         title: &str,
         events_loop: &glutin::EventsLoop,
     ) -> Result<GraphicDevice, errors::ScreenCreateError> {
+        let logical_size = LogicalSize::new(width, height);
+
         let builder = glutin::WindowBuilder::new()
             .with_title(title)
-            .with_dimensions(width, height);
+            .with_dimensions(logical_size);
 
         let (window, device, mut factory, main_color, main_depth) =
             gfx_window_glutin::init::<super::ColorFormat, super::DepthFormat>(
@@ -83,7 +86,7 @@ impl GraphicDevice {
         Ok(device)
     }
 
-    pub fn set_window_size(&mut self, width: u32, height: u32) {
+    pub fn set_window_size(&mut self, width: f64, height: f64) {
         self.update_projection(width, height);
         gfx_window_glutin::update_views(
             &self.window,
@@ -92,12 +95,12 @@ impl GraphicDevice {
         );
     }
 
-    fn update_projection(&mut self, width: u32, height: u32) {
+    fn update_projection(&mut self, width: f64, height: f64) {
         let initial_projection: Orthographic3<f32> = if width >= height {
-            let view_ratio = width as f32 / height as f32;
+            let view_ratio = (width / height) as f32;
             Orthographic3::new(-view_ratio, view_ratio, -1.0, 1.0, -1.0, 1.0)
         } else {
-            let view_ratio = height as f32 / width as f32;
+            let view_ratio = (height / width) as f32;
             Orthographic3::new(-1.0, 1.0, -view_ratio, view_ratio, -1.0, 1.0)
         };
 
@@ -110,7 +113,10 @@ impl GraphicDevice {
         self.encoder
             .update_constant_buffer(&self.data.view_uniforms, &initial_view_uniforms);
 
-        self.window.resize(width, height);
+        let dpi_factor = self.window.get_hidpi_factor();
+
+        let physical_size = PhysicalSize::from_logical(LogicalSize::new(width, height), dpi_factor);
+        self.window.resize(physical_size);
     }
 
     pub fn create_shape(&mut self, vertex_data: &[super::Vertex], indices: &[u16]) -> shape::Shape {

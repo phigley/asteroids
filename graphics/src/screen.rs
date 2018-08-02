@@ -20,8 +20,8 @@ impl Screen {
     pub fn create(title: &str) -> Result<Screen, errors::ScreenCreateError> {
         let events_loop = glutin::EventsLoop::new();
 
-        let initial_width = 800;
-        let initial_height = 600;
+        let initial_width = 800.0;
+        let initial_height = 600.0;
 
         let device = try!(GraphicDevice::new(
             initial_width,
@@ -144,9 +144,12 @@ impl ScreenImplementation {
                     },
                 ..
             }
-            | glutin::WindowEvent::Closed => callback(events::Event::Exit),
+            | glutin::WindowEvent::CloseRequested => callback(events::Event::Exit),
 
-            glutin::WindowEvent::Resized(width, height) => {
+            glutin::WindowEvent::Resized(logical_size) => {
+                // #PLH_TODO - incorporate dpi factor.
+                let (width, height): (f64, f64) = logical_size.into();
+
                 self.device.set_window_size(width, height);
                 self.cursor.set_window_size(width, height);
 
@@ -174,11 +177,13 @@ impl ScreenImplementation {
             }
 
             glutin::WindowEvent::CursorMoved {
-                position: (x_pixel, y_pixel),
+                position: logical_pos,
                 ..
-            } => if let Some(pos) = self.cursor.mouse_moved(x_pixel, y_pixel) {
-                callback(events::Event::MouseMove { pos });
-            },
+            } => {
+                if let Some(pos) = self.cursor.mouse_moved(logical_pos.x, logical_pos.y) {
+                    callback(events::Event::MouseMove { pos });
+                }
+            }
 
             glutin::WindowEvent::MouseInput { state, button, .. } => {
                 if self.cursor.on_screen() {
