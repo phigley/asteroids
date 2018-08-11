@@ -58,12 +58,12 @@ impl<'a> System<'a> for PlayerController {
 
             if input.actions.turn_right {
                 let delta_angle = UnitComplex::new(-player.angular_acceleration * input.frame_time);
-                physical.orientation = physical.orientation * delta_angle;
+                physical.orientation *= delta_angle;
             }
 
             if input.actions.turn_left {
                 let delta_angle = UnitComplex::new(player.angular_acceleration * input.frame_time);
-                physical.orientation = physical.orientation * delta_angle;
+                physical.orientation *= delta_angle;
             }
         }
     }

@@ -159,7 +159,7 @@ impl RenderTransform {
 
     fn draw_shape(&self, screen: &mut Screen, color: Color, shape: &ScreenShape) {
         for optional_transform in &self.transforms {
-            if let &Some(ref transform) = optional_transform {
+            if let Some(ref transform) = *optional_transform {
                 screen.draw_shape(transform, color, shape);
             }
         }
