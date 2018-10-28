@@ -11,7 +11,7 @@ fn main() {
         Ok(created_screen) => created_screen,
     };
 
-    let indices = [0, 1, 2, 0, 2, 3];
+    let indi ces = [0, 1, 2, 0, 2, 3];
 
     let verts = [
         Point2::new(-0.5, 0.5),

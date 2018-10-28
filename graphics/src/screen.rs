@@ -23,7 +23,7 @@ impl Screen {
         let initial_width = 800.0;
         let initial_height = 600.0;
 
-        let device = try!(GraphicDevice::new(
+        let device = try!(GraphicDevice::create(
             initial_width,
             initial_height,
             title,
@@ -200,7 +200,7 @@ impl ScreenImplementation {
                         _ => (),
                     }
                 } else {
-                    ()
+
                 }
             }
 
