@@ -1,7 +1,7 @@
 extern crate graphics;
 extern crate nalgebra;
 
-use graphics::{FrameTimer, color, events, model, screen};
+use graphics::{color, events, model, screen, FrameTimer};
 
 use nalgebra::{Point2, Similarity2, Vector2};
 
@@ -11,7 +11,7 @@ fn main() {
         Ok(created_screen) => created_screen,
     };
 
-    let indi ces = [0, 1, 2, 0, 2, 3];
+    let indices = [0, 1, 2, 0, 2, 3];
 
     let verts = [
         Point2::new(-0.5, 0.5),
@@ -33,7 +33,6 @@ fn main() {
 
     let mut should_exit = false;
     while !should_exit {
-
         frame_timer.update(10, 0.1);
         let delta_time_ms = frame_timer.elapsed().num_milliseconds();
 
