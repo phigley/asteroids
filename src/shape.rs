@@ -1,7 +1,7 @@
 use std::f32;
 
-use nalgebra;
-use nalgebra::Point2;
+use na;
+use na::Point2;
 
 use rand::distributions::{Distribution, Range};
 use rand::Rng;
@@ -22,7 +22,7 @@ impl Shape {
         let mut radius = 0.0;
 
         for v in &verts {
-            let dist = nalgebra::distance(v, origin);
+            let dist = na::distance(v, origin);
 
             if dist > radius {
                 radius = dist;

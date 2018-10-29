@@ -36,6 +36,7 @@ version = "0.1.0"
 dependencies = [
  "graphics 0.1.0",
  "nalgebra 0.16.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ncollide2d 0.17.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "quick-error 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "specs 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -460,6 +461,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ncollide2d"
+version = "0.17.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "alga 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "approx 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nalgebra 0.16.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num-traits 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "slab 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "nix"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -744,6 +759,11 @@ dependencies = [
  "derivative 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "slab"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "smallvec"
@@ -1050,6 +1070,7 @@ dependencies = [
 "checksum memoffset 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "0f9dc261e2b62d7a622bf416ea3c5245cdd5d9a7fcc428c0d06804dfce1775b3"
 "checksum mopa 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "a785740271256c230f57462d3b83e52f998433a7062fc18f96d5999474a9f915"
 "checksum nalgebra 0.16.6 (registry+https://github.com/rust-lang/crates.io-index)" = "4900fc7a38e6097088904932dcaa76db0d89353c13f8f9aac133a2b0b8987f0d"
+"checksum ncollide2d 0.17.1 (registry+https://github.com/rust-lang/crates.io-index)" = "425882363e3630b61ec2462d0d4ad650e692bcff1bd199a8d085226a9dc0f79e"
 "checksum nix 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d37e713a259ff641624b6cb20e3b12b2952313ba36b6823c0f16e6cfd9e5de17"
 "checksum nodrop 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)" = "9a2228dca57108069a5262f2ed8bd2e82496d2e074a06d1ccc7ce1687b6ae0a2"
 "checksum num-complex 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "107b9be86cd2481930688277b675b0114578227f034674726605b8a482d8baf8"
@@ -1086,6 +1107,7 @@ dependencies = [
 "checksum shred 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d94a47a63681350e0e358f8223045015454c59e34589b930bc721be22602edd1"
 "checksum shred-derive 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4b66c7ec6c50c6ef9909dd10faa24c8e571dfda5200786021b36b3fed77ac36c"
 "checksum shrev 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "ec60ed6f60a4b3cdc2ceacf57215db3408fbd8990f66a38686a31558cd9da482"
+"checksum slab 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5f9776d6b986f77b35c6cf846c11ad986ff128fe0b2b63a3628e3755e8d3102d"
 "checksum smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)" = "153ffa32fd170e9944f7e0838edf824a754ec4c1fc64746fcc9fe1f8fa602e5d"
 "checksum smithay-client-toolkit 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f1609083d6bca3991a3c648d80ae16e1764d70881c3321bee1c915149073d605"
 "checksum specs 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)" = "4266ad6f72e4863c2f6e7f799978c88273a254523c34300d9e49bff84963613a"

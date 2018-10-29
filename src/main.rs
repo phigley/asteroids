@@ -1,5 +1,6 @@
 extern crate graphics;
-extern crate nalgebra;
+extern crate nalgebra as na;
+extern crate ncollide2d;
 extern crate rand;
 extern crate specs;
 
@@ -19,7 +20,7 @@ use graphics::color::Color;
 use graphics::errors::ScreenCreateError;
 use specs::{Builder, DispatcherBuilder, World};
 
-use nalgebra::Point2;
+use na::{Isometry2, Vector2};
 
 use input::Input;
 use physics::{Physical, Physics};
@@ -39,31 +40,37 @@ fn run() -> Result<(), AppError> {
     let mut rng = rand::thread_rng();
 
     let mut world = World::new();
-    world.register::<Renderable>();
-    world.register::<Physical>();
-    world.register::<Player>();
-    world.register::<Shape>();
-    world.add_resource(Input::new());
-
-    world
-        .create_entity()
-        .with(Player::new())
-        .with(Shape::create_ship())
-        .with(Physical::new(Point2::new(0.0, 0.0)))
-        .with(Renderable::new(Color::new(1.0, 1.0, 1.0, 1.0)))
-        .build();
-
-    world
-        .create_entity()
-        .with(Shape::create_asteroid(&mut rng))
-        .with(Physical::new(Point2::new(0.5, 0.5)))
-        .with(Renderable::new(Color::new(1.0, 1.0, 1.0, 1.0)))
-        .build();
 
     let mut dispatcher = DispatcherBuilder::new()
         .with(PlayerController, "player", &[])
         .with(Physics::new(), "physics", &["player"])
         .with_thread_local(renderer)
+        .build();
+
+    dispatcher.setup(&mut world.res);
+
+    let player_pos = Isometry2::new(Vector2::new(0.0, 0.0), na::zero());
+
+    let player_shape = Shape::create_ship();
+    let player_physical = Physical::new(player_pos, player_shape.verts.clone());
+
+    world
+        .create_entity()
+        .with(Player::new())
+        .with(player_shape)
+        .with(player_physical)
+        .with(Renderable::new(Color::new(1.0, 1.0, 1.0, 1.0)))
+        .build();
+
+    let asteroid_pos = Isometry2::new(Vector2::new(0.5, 0.5), na::zero());
+    let astroid_shape = Shape::create_asteroid(&mut rng);
+    let astroid_physical = Physical::new(asteroid_pos, astroid_shape.verts.clone());
+
+    world
+        .create_entity()
+        .with(astroid_shape)
+        .with(astroid_physical)
+        .with(Renderable::new(Color::new(1.0, 1.0, 1.0, 1.0)))
         .build();
 
     while !world.read_resource::<Input>().should_exit {

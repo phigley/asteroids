@@ -3,7 +3,7 @@ use std;
 use specs::storage::BTreeStorage;
 use specs::{Join, Read, ReadStorage, System, WriteStorage};
 
-use nalgebra::{UnitComplex, Vector2};
+use na::{UnitComplex, Vector2};
 
 use input::Input;
 use physics::Physical;
@@ -43,27 +43,27 @@ impl<'a> System<'a> for PlayerController {
         for (player, mut physical) in (&player, &mut physical).join() {
             if input.actions.accel_forward {
                 let delta_velocity = player.forward_acceleration * input.frame_time;
-                physical.vel += physical.orientation * Vector2::new(0.0, delta_velocity);
+                physical.vel += physical.pos.rotation * Vector2::new(0.0, delta_velocity);
             }
 
             if input.actions.accel_right {
                 let delta_velocity = player.lateral_acceleration * input.frame_time;
-                physical.vel += physical.orientation * Vector2::new(delta_velocity, 0.0);
+                physical.vel += physical.pos.rotation * Vector2::new(delta_velocity, 0.0);
             }
 
             if input.actions.accel_left {
                 let delta_velocity = player.lateral_acceleration * input.frame_time;
-                physical.vel += physical.orientation * Vector2::new(-delta_velocity, 0.0);
+                physical.vel += physical.pos.rotation * Vector2::new(-delta_velocity, 0.0);
             }
 
             if input.actions.turn_right {
                 let delta_angle = UnitComplex::new(-player.angular_acceleration * input.frame_time);
-                physical.orientation *= delta_angle;
+                physical.pos.rotation *= delta_angle;
             }
 
             if input.actions.turn_left {
                 let delta_angle = UnitComplex::new(player.angular_acceleration * input.frame_time);
-                physical.orientation *= delta_angle;
+                physical.pos.rotation *= delta_angle;
             }
         }
     }

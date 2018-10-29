@@ -10,5 +10,6 @@ graphics = { path = "./graphics" }
 specs = "*"
 specs-derive = "*"
 quick-error = "*"
+ncollide2d = "*"
 nalgebra = "*"
 rand = "*"
