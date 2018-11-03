@@ -23,7 +23,7 @@ use specs::{Builder, DispatcherBuilder, World};
 use na::{Isometry2, Vector2};
 
 use input::Input;
-use physics::{Physical, Physics};
+use physics::{AddCollision, CollisionCreator, Physical, Physics};
 use player::{Player, PlayerController};
 use renderer::{Renderable, Renderer};
 use shape::Shape;
@@ -35,7 +35,10 @@ fn main() {
 }
 
 fn run() -> Result<(), AppError> {
-    let renderer = Renderer::create(800.0, 600.0)?;
+    let width = 800.0;
+    let height = 600.0;
+
+    let renderer = Renderer::create(width, height)?;
 
     let mut rng = rand::thread_rng();
 
@@ -43,7 +46,12 @@ fn run() -> Result<(), AppError> {
 
     let mut dispatcher = DispatcherBuilder::new()
         .with(PlayerController, "player", &[])
-        .with(Physics::new(), "physics", &["player"])
+        .with(CollisionCreator, "collision_creator", &[])
+        .with(
+            Physics::new(renderer.get_max_coords()),
+            "physics",
+            &["player", "collision_creator"],
+        )
         .with_thread_local(renderer)
         .build();
 
@@ -52,29 +60,32 @@ fn run() -> Result<(), AppError> {
     let player_pos = Isometry2::new(Vector2::new(0.0, 0.0), na::zero());
 
     let player_shape = Shape::create_ship();
-    let player_physical = Physical::new(player_pos, player_shape.verts.clone());
+    let player_physical = Physical::new(player_pos, Vector2::new(0.25, 0.5));
 
     world
         .create_entity()
         .with(Player::new())
         .with(player_shape)
+        .with(AddCollision)
         .with(player_physical)
         .with(Renderable::new(Color::new(1.0, 1.0, 1.0, 1.0)))
         .build();
 
     let asteroid_pos = Isometry2::new(Vector2::new(0.5, 0.5), na::zero());
     let astroid_shape = Shape::create_asteroid(&mut rng);
-    let astroid_physical = Physical::new(asteroid_pos, astroid_shape.verts.clone());
+    let astroid_physical = Physical::new(asteroid_pos, Vector2::new(0.25, 0.5));
 
     world
         .create_entity()
         .with(astroid_shape)
+        .with(AddCollision)
         .with(astroid_physical)
         .with(Renderable::new(Color::new(1.0, 1.0, 1.0, 1.0)))
         .build();
 
     while !world.read_resource::<Input>().should_exit {
         dispatcher.dispatch(&world.res);
+        world.maintain();
     }
 
     Ok(())

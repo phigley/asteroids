@@ -20,7 +20,7 @@ pub struct Player {
 impl Player {
     pub fn new() -> Self {
         Player {
-            forward_acceleration: 1.0 * 10.0,
+            forward_acceleration: 0.50 * 10.0,
             lateral_acceleration: 0.25 * 10.0,
 
             angular_acceleration: 2.0 * std::f32::consts::PI,

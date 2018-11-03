@@ -34,6 +34,9 @@ pub struct Renderer {
     screen: Screen,
     clear_color: Color,
 
+    max_x: f32,
+    max_y: f32,
+
     frame_timer: FrameTimer,
 }
 
@@ -42,12 +45,26 @@ impl Renderer {
         let screen = Screen::create(width, height, "Asteroids")?;
         let clear_color = Color::new(0.2, 0.2, 0.5, 1.0);
 
+        let aspect_ratio = (width / height) as f32;
+        let (max_x, max_y) = if aspect_ratio > 1.0 {
+            (aspect_ratio, 1.0)
+        } else {
+            (1.0, 1.0 / aspect_ratio)
+        };
+
         Ok(Renderer {
             screen,
             clear_color,
 
+            max_x,
+            max_y,
+
             frame_timer: FrameTimer::new(),
         })
+    }
+
+    pub fn get_max_coords(&self) -> (f32, f32) {
+        (self.max_x, self.max_y)
     }
 }
 
@@ -65,7 +82,8 @@ impl<'a> System<'a> for Renderer {
         self.screen.clear(self.clear_color);
 
         for (shape, mut renderable, physical) in (&shapes, &mut renderables, &physicals).join() {
-            let render_transform = RenderTransform::new(physical.pos, shape.radius);
+            let render_transform =
+                RenderTransform::new(physical.pos, self.max_x, self.max_y, shape.radius);
 
             match renderable.screen_shape {
                 Some(ref s) => render_transform.draw_shape(&mut self.screen, renderable.color, s),
@@ -109,25 +127,23 @@ struct RenderTransform {
 }
 
 impl RenderTransform {
-    fn new(transform: Isometry2<f32>, radius: f32) -> Self {
-        let aspect_ratio = 8.0 / 6.0;
-
+    fn new(transform: Isometry2<f32>, max_x: f32, max_y: f32, radius: f32) -> Self {
         let mut transforms = [None; 4];
 
         transforms[0] = Some(na::convert(transform));
 
-        let copy_x = if transform.translation.vector.x + radius > aspect_ratio {
-            Some(transform.translation.vector.x - 2.0 * aspect_ratio)
-        } else if transform.translation.vector.x - radius < -aspect_ratio {
-            Some(transform.translation.vector.x + 2.0 * aspect_ratio)
+        let copy_x = if transform.translation.vector.x + radius > max_x {
+            Some(transform.translation.vector.x - 2.0 * max_x)
+        } else if transform.translation.vector.x - radius < -max_x {
+            Some(transform.translation.vector.x + 2.0 * max_x)
         } else {
             None
         };
 
-        let copy_y = if transform.translation.vector.y + radius > 1.0 {
-            Some(transform.translation.vector.y - 2.0)
-        } else if transform.translation.vector.y - radius < -1.0 {
-            Some(transform.translation.vector.y + 2.0)
+        let copy_y = if transform.translation.vector.y + radius > max_y {
+            Some(transform.translation.vector.y - 2.0 * max_y)
+        } else if transform.translation.vector.y - radius < -max_y {
+            Some(transform.translation.vector.y + 2.0 * max_y)
         } else {
             None
         };
