@@ -12,7 +12,7 @@ use graphics::FrameTimer;
 
 use nalgebra::{Point2, Similarity2, Translation2, UnitComplex, Vector2};
 
-use specs::{DispatcherBuilder, Fetch, Join, System, VecStorage, World, WriteStorage};
+use specs::{Builder, DispatcherBuilder, Join, Read, System, VecStorage, World, WriteStorage};
 
 use std::f32;
 
@@ -40,7 +40,7 @@ fn main() {
     let mut frame_timer = FrameTimer::new();
 
     let mut dispatcher = DispatcherBuilder::new()
-        .add(ApplyPhysics::new(), "apply_physics", &[])
+        .with(ApplyPhysics::new(), "apply_physics", &[])
         .build();
 
     let mut pending_ball: Option<PendingBall> = None;
@@ -103,11 +103,11 @@ fn main() {
             _ => (),
         });
 
-        dispatcher.dispatch(&mut world.res);
+        dispatcher.dispatch(&world.res);
 
         {
-            let ball_renderables = world.read::<BallRenderable>();
-            let positions = world.read::<Position>();
+            let ball_renderables = world.read_storage::<BallRenderable>();
+            let positions = world.read_storage::<Position>();
 
             for (&BallRenderable(ref color), &Position(ref pos)) in
                 (&ball_renderables, &positions).join()
@@ -134,15 +134,15 @@ fn main() {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct FrameTime(f32);
 
 #[derive(Component, Debug)]
-#[component(VecStorage)]
+#[storage(VecStorage)]
 struct Position(Point2<f32>);
 
 #[derive(Component, Debug)]
-#[component(VecStorage)]
+#[storage(VecStorage)]
 struct Velocity(Vector2<f32>);
 
 #[derive(Debug)]
@@ -169,7 +169,7 @@ impl ApplyPhysics {
 
 impl<'a> System<'a> for ApplyPhysics {
     type SystemData = (
-        Fetch<'a, FrameTime>,
+        Read<'a, FrameTime>,
         WriteStorage<'a, Position>,
         WriteStorage<'a, Velocity>,
     );
@@ -218,6 +218,7 @@ impl<'a> System<'a> for ApplyPhysics {
 }
 
 #[derive(Component, Debug)]
+#[storage(VecStorage)]
 struct BallRenderable(Color);
 
 #[derive(Clone)]
