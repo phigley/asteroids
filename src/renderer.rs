@@ -38,8 +38,8 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn create() -> Result<Self, ScreenCreateError> {
-        let screen = Screen::create("Asteroids")?;
+    pub fn create(width: f64, height: f64) -> Result<Self, ScreenCreateError> {
+        let screen = Screen::create(width, height, "Asteroids")?;
         let clear_color = Color::new(0.2, 0.2, 0.5, 1.0);
 
         Ok(Renderer {

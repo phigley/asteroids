@@ -35,7 +35,7 @@ fn main() {
 }
 
 fn run() -> Result<(), AppError> {
-    let renderer = Renderer::create()?;
+    let renderer = Renderer::create(800.0, 600.0)?;
 
     let mut rng = rand::thread_rng();
 

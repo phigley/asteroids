@@ -7,7 +7,7 @@ use graphics::{color, events, model, screen, FrameTimer};
 use nalgebra::{Similarity2, Vector2};
 
 fn main() {
-    let mut screen = match screen::Screen::create("Chase Cursor") {
+    let mut screen = match screen::Screen::create(800.0, 600.0, "Chase Cursor") {
         Err(create_error) => panic!(create_error.to_string()),
         Ok(created_screen) => created_screen,
     };

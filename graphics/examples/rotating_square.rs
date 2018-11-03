@@ -6,7 +6,7 @@ use graphics::{color, events, model, screen, FrameTimer};
 use nalgebra::{Point2, Similarity2, Vector2};
 
 fn main() {
-    let mut screen = match screen::Screen::create("Rotating Square") {
+    let mut screen = match screen::Screen::create(800.0, 600.0, "Rotating Square") {
         Err(create_error) => panic!(create_error.to_string()),
         Ok(created_screen) => created_screen,
     };

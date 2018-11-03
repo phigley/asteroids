@@ -6,7 +6,7 @@ use graphics::{color, events, model, screen};
 use nalgebra::Similarity2;
 
 fn main() {
-    let mut screen = match screen::Screen::create("Circle") {
+    let mut screen = match screen::Screen::create(800.0, 600.0, "Circle") {
         Err(create_error) => panic!(create_error.to_string()),
         Ok(created_screen) => created_screen,
     };

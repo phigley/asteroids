@@ -17,24 +17,20 @@ pub struct Screen {
 }
 
 impl Screen {
-    pub fn create(title: &str) -> Result<Screen, errors::ScreenCreateError> {
+    pub fn create(
+        width: f64,
+        height: f64,
+        title: &str,
+    ) -> Result<Screen, errors::ScreenCreateError> {
         let events_loop = glutin::EventsLoop::new();
 
-        let initial_width = 800.0;
-        let initial_height = 600.0;
-
-        let device = try!(GraphicDevice::create(
-            initial_width,
-            initial_height,
-            title,
-            &events_loop,
-        ));
+        let device = try!(GraphicDevice::create(width, height, title, &events_loop,));
 
         Ok(Screen {
             events_loop,
             implementation: ScreenImplementation {
                 device,
-                cursor: Cursor::new(initial_width, initial_height),
+                cursor: Cursor::new(width, height),
             },
         })
     }

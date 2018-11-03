@@ -17,7 +17,7 @@ use specs::{DispatcherBuilder, Fetch, Join, System, VecStorage, World, WriteStor
 use std::f32;
 
 fn main() {
-    let mut screen = match Screen::create("Bouncing Balls") {
+    let mut screen = match Screen::create(800.0, 600.0, "Bouncing Balls") {
         Err(create_error) => panic!("{:?}", create_error),
         Ok(created_screen) => created_screen,
     };
