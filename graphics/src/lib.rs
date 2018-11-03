@@ -12,10 +12,10 @@ extern crate time;
 pub mod color;
 pub mod errors;
 pub mod events;
+mod frame_timer;
 pub mod model;
 pub mod screen;
 pub mod shape;
-mod frame_timer;
 
 pub use frame_timer::FrameTimer;
 

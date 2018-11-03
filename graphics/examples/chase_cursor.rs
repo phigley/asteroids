@@ -2,7 +2,7 @@ extern crate graphics;
 extern crate nalgebra;
 extern crate time;
 
-use graphics::{FrameTimer, color, events, model, screen};
+use graphics::{color, events, model, screen, FrameTimer};
 
 use nalgebra::{Similarity2, Vector2};
 
@@ -52,7 +52,6 @@ fn main() {
 
     let mut should_exit = false;
     while !should_exit {
-
         screen.clear(clear_color);
         screen.draw_model(&fixed_model);
         screen.draw_model(&chase_model);

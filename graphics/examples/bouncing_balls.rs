@@ -55,7 +55,6 @@ fn main() {
 
         *world.write_resource::<FrameTime>() = FrameTime(frame_delta);
 
-
         screen.poll_events(|event| match event {
             Event::Exit => should_exit = true,
 
