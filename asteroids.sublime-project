@@ -1,0 +1,99 @@
+{
+	"build_systems":
+	[
+		{
+			"command": "build",
+			"keyfiles":
+			[
+				"Cargo.toml"
+			],
+			"name": "Custom Cargo Build",
+			"selector": "source.rust",
+			"target": "cargo_exec",
+			"variants":
+			[
+				{
+					"command": "clippy",
+					"command_info":
+					{
+					},
+					"name": "clippy all",
+					"settings":
+					{
+						"env":
+						{
+						},
+						"extra_cargo_args": "--all --examples",
+						"extra_run_args": "",
+						"features": "",
+						"no_default_features": false,
+						"release": false,
+						"target": "",
+						"target_triple": "",
+						"toolchain": "",
+						"working_dir": "/Users/phigley/projects/rust/asteroids"
+					},
+					"target": "cargo_exec"
+				},
+				{
+					"command": "auto",
+					"name": "Automatic"
+				},
+				{
+					"command": "run",
+					"name": "Run"
+				},
+				{
+					"command": "run",
+					"command_info":
+					{
+						"wants_run_args": true
+					},
+					"name": "Run (with args)..."
+				},
+				{
+					"command": "check",
+					"name": "Check"
+				},
+				{
+					"command": "test",
+					"name": "Test"
+				},
+				{
+					"command": "test",
+					"command_info":
+					{
+						"wants_run_args": true
+					},
+					"name": "Test (with args)..."
+				},
+				{
+					"command": "bench",
+					"name": "Bench"
+				},
+				{
+					"command": "clean",
+					"name": "Clean"
+				},
+				{
+					"command": "doc",
+					"name": "Document"
+				},
+				{
+					"command": "clippy",
+					"name": "Clippy"
+				},
+				{
+					"command": "script",
+					"name": "Script"
+				}
+			]
+		}
+	],
+	"folders":
+	[
+		{
+			"path": "."
+		}
+	]
+}
