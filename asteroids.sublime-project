@@ -23,7 +23,7 @@
 						"env":
 						{
 						},
-						"extra_cargo_args": "--all --examples",
+						"extra_cargo_args": "--all --examples --lib --bins",
 						"extra_run_args": "",
 						"features": "",
 						"no_default_features": false,
