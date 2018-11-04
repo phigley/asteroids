@@ -2,11 +2,9 @@ use std::f32;
 
 use na;
 use na::Point2;
-
 use rand::distributions::{Distribution, Range};
 use rand::Rng;
-
-use specs::VecStorage;
+use specs::{Component, VecStorage};
 
 #[derive(Component, Debug)]
 #[storage(VecStorage)]

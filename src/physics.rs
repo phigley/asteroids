@@ -6,8 +6,8 @@ use ncollide2d::world::{
     CollisionGroups, CollisionObjectHandle, CollisionWorld, GeometricQueryType,
 };
 use specs::{
-    Entities, Entity, Join, LazyUpdate, NullStorage, Read, ReadStorage, System, VecStorage, Write,
-    WriteStorage,
+    Component, Entities, Entity, Join, LazyUpdate, NullStorage, Read, ReadStorage, System,
+    VecStorage, Write, WriteStorage,
 };
 
 use input::Input;

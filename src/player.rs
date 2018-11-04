@@ -1,7 +1,7 @@
 use std;
 
 use specs::storage::BTreeStorage;
-use specs::{Join, Read, ReadStorage, System, WriteStorage};
+use specs::{Component, Join, Read, ReadStorage, System, WriteStorage};
 
 use na::{UnitComplex, Vector2};
 

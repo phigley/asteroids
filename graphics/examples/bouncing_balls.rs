@@ -12,7 +12,9 @@ use graphics::FrameTimer;
 
 use nalgebra::{Point2, Similarity2, Translation2, UnitComplex, Vector2};
 
-use specs::{Builder, DispatcherBuilder, Join, Read, System, VecStorage, World, WriteStorage};
+use specs::{
+    Builder, Component, DispatcherBuilder, Join, Read, System, VecStorage, World, WriteStorage,
+};
 
 use std::f32;
 

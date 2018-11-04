@@ -8,7 +8,7 @@ use na;
 
 use na::{Isometry2, Similarity2, Translation2, Vector2};
 
-use specs::{Join, ReadStorage, System, VecStorage, Write, WriteStorage};
+use specs::{Component, Join, ReadStorage, System, VecStorage, Write, WriteStorage};
 
 use input::Input;
 use physics::Physical;
@@ -150,7 +150,7 @@ impl RenderTransform {
 
         if let Some(adjusted_x) = copy_x {
             transforms[1] = Some(Similarity2::from_parts(
-                Translation2::from_vector(Vector2::new(adjusted_x, transform.translation.vector.y)),
+                Translation2::from(Vector2::new(adjusted_x, transform.translation.vector.y)),
                 transform.rotation,
                 1.0,
             ));
@@ -158,7 +158,7 @@ impl RenderTransform {
             // when x and y need to be adjusted, we will need 4 copies.
             if let Some(adjusted_y) = copy_y {
                 transforms[2] = Some(Similarity2::from_parts(
-                    Translation2::from_vector(Vector2::new(adjusted_x, adjusted_y)),
+                    Translation2::from(Vector2::new(adjusted_x, adjusted_y)),
                     transform.rotation,
                     1.0,
                 ));
@@ -167,7 +167,7 @@ impl RenderTransform {
 
         if let Some(adjusted_y) = copy_y {
             transforms[3] = Some(Similarity2::from_parts(
-                Translation2::from_vector(Vector2::new(transform.translation.vector.x, adjusted_y)),
+                Translation2::from(Vector2::new(transform.translation.vector.x, adjusted_y)),
                 transform.rotation,
                 1.0,
             ));
