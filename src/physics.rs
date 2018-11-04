@@ -1,5 +1,5 @@
 use na;
-use na::{Isometry2, Vector2};
+use na::{Isometry2, Unit, Vector2};
 use ncollide2d::events::ContactEvent;
 use ncollide2d::shape::{Polyline, ShapeHandle};
 use ncollide2d::world::{
@@ -150,19 +150,33 @@ impl<'a> System<'a> for Physics {
                     let mut collector = Vec::new();
                     pair.contacts(&mut collector);
 
-                    let normal = collector[0].deepest_contact().unwrap().contact.normal;
-
-                    if let Some(co0) = physics_world.collision_world.collision_object(c0) {
-                        if let Some(ref mut physical0) = physical.get_mut(*co0.data()) {
-                            physical0.vel -= 2.0 * na::dot(&physical0.vel, &normal) * *normal;
+                    let mut accumulator = na::zero();
+                    for contact in collector {
+                        if let Some(deepest) = contact.deepest_contact() {
+                            let contact = &deepest.contact;
+                            accumulator += *contact.normal * contact.depth;
                         }
                     }
 
-                    if let Some(co1) = physics_world.collision_world.collision_object(c1) {
-                        if let Some(ref mut physical1) = physical.get_mut(*co1.data()) {
-                            physical1.vel -= 2.0 * na::dot(&physical1.vel, &normal) * *normal;
+                    if let Some(normal) = Unit::try_new(accumulator, 1e-6) {
+                        if let Some(co0) = physics_world.collision_world.collision_object(c0) {
+                            if let Some(ref mut physical0) = physical.get_mut(*co0.data()) {
+                                physical0.vel -= 2.0 * na::dot(&physical0.vel, &normal) * *normal;
+                            }
+                        }
+
+                        if let Some(co1) = physics_world.collision_world.collision_object(c1) {
+                            let flipped_normal = -normal;
+
+                            if let Some(ref mut physical1) = physical.get_mut(*co1.data()) {
+                                physical1.vel -= 2.0
+                                    * na::dot(&physical1.vel, &flipped_normal)
+                                    * *flipped_normal;
+                            }
                         }
                     }
+
+                    // let normal = collector[0].deepest_contact().unwrap().contact.normal;
                 }
             }
         }
