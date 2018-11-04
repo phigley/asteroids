@@ -33,11 +33,10 @@ fn main() {
         screen.draw_model(&model);
         screen.flush();
 
-        screen.poll_events(|event| match event {
-            events::Event::Exit => {
+        screen.poll_events(|event| {
+            if let events::Event::Exit = event {
                 should_exit = true;
             }
-            _ => (),
         });
     }
 }

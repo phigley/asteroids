@@ -115,7 +115,7 @@ fn main() {
                 (&ball_renderables, &positions).join()
             {
                 let transform = Similarity2::from_parts(
-                    Translation2::from_vector(pos.coords),
+                    Translation2::from(pos.coords),
                     UnitComplex::identity(),
                     1.0,
                 );
@@ -125,7 +125,7 @@ fn main() {
 
         if let Some(ref pending_ball) = pending_ball {
             let transform = Similarity2::from_parts(
-                Translation2::from_vector(pending_ball.pos.coords),
+                Translation2::from(pending_ball.pos.coords),
                 UnitComplex::identity(),
                 1.0,
             );

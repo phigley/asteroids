@@ -69,7 +69,7 @@ fn main() {
                 follow_model.transform = Similarity2::new(pos.coords, 0.0f32, follow_scale);
             }
             events::Event::MouseLMB { down } => {
-                if down == false {
+                if !down {
                     current_color += 1;
                     if current_color >= colors.len() {
                         current_color = 0;
