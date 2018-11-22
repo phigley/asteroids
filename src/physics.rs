@@ -1,38 +1,39 @@
-use na;
-use na::{Isometry2, Unit, Vector2};
-use ncollide2d::events::ContactEvent;
-use ncollide2d::shape::{Polyline, ShapeHandle};
-use ncollide2d::world::{
-    CollisionGroups, CollisionObjectHandle, CollisionWorld, GeometricQueryType,
-};
+use crate::na::{Isometry2, Point2, Vector2};
+use crate::ncollide2d::shape::{Polyline, ShapeHandle};
+use crate::nphysics2d::algebra::Inertia2;
+use crate::nphysics2d::object::Material;
+use crate::nphysics2d::world::World;
 use specs::{
-    Component, Entities, Entity, Join, LazyUpdate, NullStorage, Read, ReadStorage, System,
-    VecStorage, Write, WriteStorage,
+    Component, Entities, HashMapStorage, Join, LazyUpdate, Read, ReadStorage, System, VecStorage,
+    Write, WriteStorage,
 };
 
 use input::Input;
 use shape::Shape;
 
-#[derive(Component, Default)]
-#[storage(NullStorage)]
-pub struct AddCollision;
+#[derive(Component)]
+#[storage(HashMapStorage)]
+pub struct AddCollision {
+    pos: Isometry2<f32>,
+    vel: Vector2<f32>,
+}
+
+impl AddCollision {
+    pub fn new(pos: Isometry2<f32>, vel: Vector2<f32>) -> Self {
+        AddCollision { pos, vel }
+    }
+}
 
 #[derive(Component)]
 #[storage(VecStorage)]
 pub struct Physical {
     pub pos: Isometry2<f32>,
     pub vel: Vector2<f32>,
-
-    collision_handle: Option<CollisionObjectHandle>,
 }
 
 impl Physical {
-    pub fn new(pos: Isometry2<f32>, vel: Vector2<f32>) -> Self {
-        Physical {
-            pos,
-            vel,
-            collision_handle: None,
-        }
+    fn new(pos: Isometry2<f32>, vel: Vector2<f32>) -> Self {
+        Physical { pos, vel }
     }
 
     fn apply_dynamics(&mut self, frame_time: f32, max_speed: f32) {
@@ -67,13 +68,13 @@ impl Physical {
 }
 
 pub struct PhysicsWorld {
-    collision_world: CollisionWorld<f32, Entity>,
+    world: World<f32>,
 }
 
 impl Default for PhysicsWorld {
     fn default() -> Self {
         PhysicsWorld {
-            collision_world: CollisionWorld::new(0.02),
+            world: World::new(),
         }
     }
 }
@@ -81,33 +82,53 @@ impl Default for PhysicsWorld {
 pub struct CollisionCreator;
 
 impl<'a> System<'a> for CollisionCreator {
-    #[allow(clippy::type_complexity)]
+    //#[allow(clippy::type_complexity)]
     type SystemData = (
         Read<'a, LazyUpdate>,
         Write<'a, PhysicsWorld>,
         Entities<'a>,
         ReadStorage<'a, AddCollision>,
         ReadStorage<'a, Shape>,
-        WriteStorage<'a, Physical>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (lazy, mut physics_world, entities, add_collisions, shapes, mut physical) = data;
+        let (lazy, mut physics_world, entities, add_collisions, shapes) = data;
 
-        for (e, _, shape, physical) in (&entities, &add_collisions, &shapes, &mut physical).join() {
+        for (e, add_collision, shape) in (&entities, &add_collisions, &shapes).join() {
+            let center_of_mass: Point2<f32> = {
+                let mut result: Vector2<f32> =
+                    shape
+                        .verts
+                        .iter()
+                        .fold(Vector2::new(0.0, 0.0), |mut acc, v| {
+                            acc.x += v.x;
+                            acc.y += v.y;
+                            acc
+                        });
+                result /= shape.verts.len() as f32;
+                Point2::from(result)
+            };
+
+            let inertia = Inertia2::new(1.0, 1.0);
+
             let shape_handle = ShapeHandle::new(Polyline::new(shape.verts.clone()));
 
-            let collision_handle = physics_world.collision_world.add(
-                physical.pos,
-                shape_handle,
-                CollisionGroups::new(),
-                GeometricQueryType::Contacts(0.0, 0.09),
-                e,
-            );
+            let body_handle =
+                physics_world
+                    .world
+                    .add_rigid_body(add_collision.pos, inertia, center_of_mass);
 
-            physical.collision_handle = Some(collision_handle);
+            let _collision_handle = physics_world.world.add_collider(
+                0.002,
+                shape_handle,
+                body_handle,
+                Isometry2::identity(),
+                Material::default(),
+            );
+            // physical.collision_handle = Some(collision_handle);
 
             lazy.remove::<AddCollision>(e);
+            lazy.insert(e, Physical::new(add_collision.pos, add_collision.vel));
         }
     }
 }
@@ -142,54 +163,58 @@ impl<'a> System<'a> for Physics {
 
         let frame_time = input.frame_time;
 
-        physics_world.collision_world.update();
-
-        for event in physics_world.collision_world.contact_events() {
-            if let ContactEvent::Started(c0, c1) = *event {
-                if let Some(pair) = physics_world.collision_world.contact_pair(c0, c1) {
-                    let mut collector = Vec::new();
-                    pair.contacts(&mut collector);
-
-                    let mut accumulator = na::zero();
-                    for contact in collector {
-                        if let Some(deepest) = contact.deepest_contact() {
-                            let contact = &deepest.contact;
-                            accumulator += *contact.normal * contact.depth;
-                        }
-                    }
-
-                    if let Some(normal) = Unit::try_new(accumulator, 1e-6) {
-                        if let Some(co0) = physics_world.collision_world.collision_object(c0) {
-                            if let Some(ref mut physical0) = physical.get_mut(*co0.data()) {
-                                physical0.vel -= 2.0 * na::dot(&physical0.vel, &normal) * *normal;
-                            }
-                        }
-
-                        if let Some(co1) = physics_world.collision_world.collision_object(c1) {
-                            let flipped_normal = -normal;
-
-                            if let Some(ref mut physical1) = physical.get_mut(*co1.data()) {
-                                physical1.vel -= 2.0
-                                    * na::dot(&physical1.vel, &flipped_normal)
-                                    * *flipped_normal;
-                            }
-                        }
-                    }
-
-                    // let normal = collector[0].deepest_contact().unwrap().contact.normal;
-                }
-            }
+        // PLH_TODO - accumulate left-over frame time
+        let steps = (input.frame_time * 60.0) as i32;
+        for _ in 0..steps {
+            physics_world.world.step();
         }
+
+        // for event in physics_world.world.contact_events() {
+        //     if let ContactEvent::Started(c0, c1) = *event {
+        //         if let Some(pair) = physics_world.world.contact_pair(c0, c1) {
+        //             let mut collector = Vec::new();
+        //             pair.contacts(&mut collector);
+
+        //             let mut accumulator = na::zero();
+        //             for contact in collector {
+        //                 if let Some(deepest) = contact.deepest_contact() {
+        //                     let contact = &deepest.contact;
+        //                     accumulator += *contact.normal * contact.depth;
+        //                 }
+        //             }
+
+        //             if let Some(normal) = Unit::try_new(accumulator, 1e-6) {
+        //                 if let Some(co0) = physics_world.world.collision_object(c0) {
+        //                     if let Some(ref mut physical0) = physical.get_mut(*co0.data()) {
+        //                         physical0.vel -= 2.0 * na::dot(&physical0.vel, &normal) * *normal;
+        //                     }
+        //                 }
+
+        //                 if let Some(co1) = physics_world.world.collision_object(c1) {
+        //                     let flipped_normal = -normal;
+
+        //                     if let Some(ref mut physical1) = physical.get_mut(*co1.data()) {
+        //                         physical1.vel -= 2.0
+        //                             * na::dot(&physical1.vel, &flipped_normal)
+        //                             * *flipped_normal;
+        //                     }
+        //                 }
+        //             }
+
+        //             // let normal = collector[0].deepest_contact().unwrap().contact.normal;
+        //         }
+        //     }
+        // }
 
         for physical in (&mut physical).join() {
             physical.apply_dynamics(frame_time, self.max_speed);
             physical.apply_wraparound(self.max_x, self.max_y);
 
-            if let Some(collision_handle) = physical.collision_handle {
-                physics_world
-                    .collision_world
-                    .set_position(collision_handle, physical.pos);
-            }
+            // if let Some(collision_handle) = physical.collision_handle {
+            //     physics_world
+            //         .world
+            //         .set_position(collision_handle, physical.pos);
+            // }
         }
     }
 }

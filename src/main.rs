@@ -1,6 +1,7 @@
 extern crate graphics;
 extern crate nalgebra as na;
 extern crate ncollide2d;
+extern crate nphysics2d;
 extern crate rand;
 extern crate specs;
 
@@ -23,7 +24,7 @@ use specs::{Builder, DispatcherBuilder, World};
 use na::{Isometry2, Vector2};
 
 use input::Input;
-use physics::{AddCollision, CollisionCreator, Physical, Physics};
+use physics::{AddCollision, CollisionCreator, Physics};
 use player::{Player, PlayerController};
 use renderer::{Renderable, Renderer};
 use shape::Shape;
@@ -60,25 +61,23 @@ fn run() -> Result<(), AppError> {
     let player_pos = Isometry2::new(Vector2::new(0.0, 0.0), na::zero());
 
     let player_shape = Shape::create_ship();
-    let player_physical = Physical::new(player_pos, Vector2::new(0.25, 0.5));
+    let player_physical = AddCollision::new(player_pos, Vector2::new(0.25, 0.5));
 
     world
         .create_entity()
         .with(Player::new())
         .with(player_shape)
-        .with(AddCollision)
         .with(player_physical)
         .with(Renderable::new(Color::new(1.0, 1.0, 1.0, 1.0)))
         .build();
 
     let asteroid_pos = Isometry2::new(Vector2::new(0.5, 0.5), na::zero());
     let astroid_shape = Shape::create_asteroid(&mut rng);
-    let astroid_physical = Physical::new(asteroid_pos, Vector2::new(0.25, 0.5));
+    let astroid_physical = AddCollision::new(asteroid_pos, Vector2::new(0.25, 0.5));
 
     world
         .create_entity()
         .with(astroid_shape)
-        .with(AddCollision)
         .with(astroid_physical)
         .with(Renderable::new(Color::new(1.0, 1.0, 1.0, 1.0)))
         .build();
