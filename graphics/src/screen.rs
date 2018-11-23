@@ -24,7 +24,7 @@ impl Screen {
     ) -> Result<Screen, errors::ScreenCreateError> {
         let events_loop = glutin::EventsLoop::new();
 
-        let device = try!(GraphicDevice::create(width, height, title, &events_loop,));
+        let device = GraphicDevice::create(width, height, title, &events_loop)?;
 
         Ok(Screen {
             events_loop,

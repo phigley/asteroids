@@ -50,13 +50,13 @@ impl GraphicDevice {
 
         let encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
 
-        let pso = try!(factory
+        let pso = factory
             .create_pipeline_simple(
                 include_bytes!("simple.vert"),
                 include_bytes!("simple.frag"),
                 super::pipe::new(),
             )
-            .context("simple"));
+            .context("simple")?;
 
         let empty_vertex = [];
         let vbuf = factory.create_vertex_buffer(&empty_vertex);
