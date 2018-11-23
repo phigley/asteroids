@@ -81,7 +81,7 @@ impl<'a> System<'a> for Renderer {
 
         self.screen.clear(self.clear_color);
 
-        for (shape, mut renderable, physical) in (&shapes, &mut renderables, &physicals).join() {
+        for (shape, renderable, physical) in (&shapes, &mut renderables, &physicals).join() {
             let render_transform = RenderTransform::new(
                 physical.render_position(),
                 self.max_x,

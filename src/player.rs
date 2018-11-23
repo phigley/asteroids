@@ -40,7 +40,7 @@ impl<'a> System<'a> for PlayerController {
     fn run(&mut self, data: Self::SystemData) {
         let (input, player, mut physical) = data;
 
-        for (player, mut physical) in (&player, &mut physical).join() {
+        for (player, physical) in (&player, &mut physical).join() {
             if input.actions.accel_forward {
                 physical.add_relative_pulse(player.forward_acceleration * Vector2::y());
             }
