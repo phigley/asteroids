@@ -1,8 +1,10 @@
-use crate::na::{Isometry2, Point2, Vector2};
+use crate::na::{Isometry2, Point2, UnitComplex, Vector2};
 use crate::ncollide2d::shape::{Polyline, ShapeHandle};
-use crate::nphysics2d::algebra::Inertia2;
-use crate::nphysics2d::object::Material;
-use crate::nphysics2d::world::World;
+use crate::nphysics2d::{
+    algebra::Inertia2,
+    object::{BodyHandle, Material},
+    world::World,
+};
 use specs::{
     Component, Entities, HashMapStorage, Join, LazyUpdate, Read, ReadStorage, System, VecStorage,
     Write, WriteStorage,
@@ -27,42 +29,103 @@ impl AddCollision {
 #[derive(Component)]
 #[storage(VecStorage)]
 pub struct Physical {
-    pub pos: Isometry2<f32>,
-    pub vel: Vector2<f32>,
+    pos: Isometry2<f32>,
+    vel: Vector2<f32>,
+
+    pulse_accel: Vector2<f32>,
+    pulse_rot: f32,
+
+    body_handle: BodyHandle,
 }
 
 impl Physical {
-    fn new(pos: Isometry2<f32>, vel: Vector2<f32>) -> Self {
-        Physical { pos, vel }
+    fn new(pos: Isometry2<f32>, vel: Vector2<f32>, body_handle: BodyHandle) -> Self {
+        Physical {
+            pos,
+            vel,
+            pulse_accel: Vector2::new(0.0, 0.0),
+            pulse_rot: 0.0,
+            body_handle,
+        }
     }
 
-    fn apply_dynamics(&mut self, frame_time: f32, max_speed: f32) {
-        // Clamp velocity.
-        let initial_speed = self.vel.norm();
+    pub fn position(&self) -> Isometry2<f32> {
+        self.pos
+    }
 
-        if initial_speed > max_speed {
-            self.vel *= max_speed / initial_speed;
+    pub fn add_relative_pulse(&mut self, accel: Vector2<f32>) {
+        self.pulse_accel += self.pos.rotation * accel;
+    }
+
+    pub fn add_angular_pulse(&mut self, angle: f32) {
+        self.pulse_rot += angle;
+    }
+
+    fn apply_dynamics(&mut self, world: &mut World<f32>, frame_time: f32, max_speed: f32) {
+        // Clamp velocity.
+        let accel = self.pulse_accel.norm();
+        if accel > 0.0 {
+            self.vel += self.pulse_accel * frame_time;
+            let initial_speed = self.vel.norm();
+
+            if initial_speed > max_speed {
+                self.vel *= max_speed / initial_speed;
+            }
+
+            // Apply velocity.
+            if let Some(ref mut rigid_body) = world.rigid_body_mut(self.body_handle) {
+                rigid_body.set_linear_velocity(self.vel);
+            }
         }
 
-        // Apply velocity.
-        self.pos.translation.vector += self.vel * frame_time;
+        if self.pulse_rot != 0.0 {
+            if let Some(ref mut rigid_body) = world.rigid_body_mut(self.body_handle) {
+                let mut position = rigid_body.position();
+
+                let delta_angle = UnitComplex::new(-self.pulse_rot * frame_time);
+                position.rotation *= delta_angle;
+
+                rigid_body.set_position(position);
+            }
+        }
     }
 
-    fn apply_wraparound(&mut self, max_x: f32, max_y: f32) {
+    fn apply_step(&mut self, world: &World<f32>) {
+        if let Some(ref rigid_body) = world.rigid_body(self.body_handle) {
+            self.pos = rigid_body.position();
+            self.vel = rigid_body.velocity().linear;
+        }
+        self.pulse_accel = Vector2::new(0.0, 0.0);
+        self.pulse_rot = 0.0;
+    }
+
+    fn apply_wraparound(&mut self, world: &mut World<f32>, max_x: f32, max_y: f32) {
+        let mut modified = false;
+
         while self.pos.translation.vector.x >= max_x {
             self.pos.translation.vector.x -= 2.0 * max_x;
+            modified = true;
         }
 
         while self.pos.translation.vector.x < -max_x {
             self.pos.translation.vector.x += 2.0 * max_x;
+            modified = true;
         }
 
         while self.pos.translation.vector.y >= max_y {
             self.pos.translation.vector.y -= 2.0 * max_y;
+            modified = true;
         }
 
         while self.pos.translation.vector.y < -max_y {
             self.pos.translation.vector.y += 2.0 * max_y;
+            modified = true;
+        }
+
+        if modified {
+            if let Some(ref mut rigid_body) = world.rigid_body_mut(self.body_handle) {
+                rigid_body.set_position(self.pos);
+            }
         }
     }
 }
@@ -118,17 +181,23 @@ impl<'a> System<'a> for CollisionCreator {
                     .world
                     .add_rigid_body(add_collision.pos, inertia, center_of_mass);
 
-            let _collision_handle = physics_world.world.add_collider(
+            physics_world.world.add_collider(
                 0.002,
                 shape_handle,
                 body_handle,
                 Isometry2::identity(),
                 Material::default(),
             );
-            // physical.collision_handle = Some(collision_handle);
+
+            if let Some(ref mut rigid_body) = physics_world.world.rigid_body_mut(body_handle) {
+                rigid_body.set_linear_velocity(add_collision.vel);
+            }
 
             lazy.remove::<AddCollision>(e);
-            lazy.insert(e, Physical::new(add_collision.pos, add_collision.vel));
+            lazy.insert(
+                e,
+                Physical::new(add_collision.pos, add_collision.vel, body_handle),
+            );
         }
     }
 }
@@ -161,60 +230,24 @@ impl<'a> System<'a> for Physics {
     fn run(&mut self, data: Self::SystemData) {
         let (input, mut physics_world, mut physical) = data;
 
-        let frame_time = input.frame_time;
-
         // PLH_TODO - accumulate left-over frame time
-        let steps = (input.frame_time * 60.0) as i32;
-        for _ in 0..steps {
+        let physics_steps_float =
+            f32::max(1.0, f32::min(f32::floor(input.frame_time * 60.0), 10.0));
+        let physics_steps = physics_steps_float as i32;
+        let physics_frame_time = physics_steps_float / 60.0;
+
+        for physical in (&mut physical).join() {
+            physical.apply_dynamics(&mut physics_world.world, physics_frame_time, self.max_speed);
+            physical.apply_wraparound(&mut physics_world.world, self.max_x, self.max_y);
+        }
+
+        for _ in 0..physics_steps {
             physics_world.world.step();
         }
 
-        // for event in physics_world.world.contact_events() {
-        //     if let ContactEvent::Started(c0, c1) = *event {
-        //         if let Some(pair) = physics_world.world.contact_pair(c0, c1) {
-        //             let mut collector = Vec::new();
-        //             pair.contacts(&mut collector);
-
-        //             let mut accumulator = na::zero();
-        //             for contact in collector {
-        //                 if let Some(deepest) = contact.deepest_contact() {
-        //                     let contact = &deepest.contact;
-        //                     accumulator += *contact.normal * contact.depth;
-        //                 }
-        //             }
-
-        //             if let Some(normal) = Unit::try_new(accumulator, 1e-6) {
-        //                 if let Some(co0) = physics_world.world.collision_object(c0) {
-        //                     if let Some(ref mut physical0) = physical.get_mut(*co0.data()) {
-        //                         physical0.vel -= 2.0 * na::dot(&physical0.vel, &normal) * *normal;
-        //                     }
-        //                 }
-
-        //                 if let Some(co1) = physics_world.world.collision_object(c1) {
-        //                     let flipped_normal = -normal;
-
-        //                     if let Some(ref mut physical1) = physical.get_mut(*co1.data()) {
-        //                         physical1.vel -= 2.0
-        //                             * na::dot(&physical1.vel, &flipped_normal)
-        //                             * *flipped_normal;
-        //                     }
-        //                 }
-        //             }
-
-        //             // let normal = collector[0].deepest_contact().unwrap().contact.normal;
-        //         }
-        //     }
-        // }
-
         for physical in (&mut physical).join() {
-            physical.apply_dynamics(frame_time, self.max_speed);
-            physical.apply_wraparound(self.max_x, self.max_y);
-
-            // if let Some(collision_handle) = physical.collision_handle {
-            //     physics_world
-            //         .world
-            //         .set_position(collision_handle, physical.pos);
-            // }
+            physical.apply_step(&physics_world.world);
+            physical.apply_wraparound(&mut physics_world.world, self.max_x, self.max_y);
         }
     }
 }

@@ -52,8 +52,7 @@ fn run() -> Result<(), AppError> {
             Physics::new(renderer.get_max_coords()),
             "physics",
             &["player", "collision_creator"],
-        )
-        .with_thread_local(renderer)
+        ).with_thread_local(renderer)
         .build();
 
     dispatcher.setup(&mut world.res);
@@ -71,14 +70,24 @@ fn run() -> Result<(), AppError> {
         .with(Renderable::new(Color::new(1.0, 1.0, 1.0, 1.0)))
         .build();
 
-    let asteroid_pos = Isometry2::new(Vector2::new(0.5, 0.5), na::zero());
     let astroid_shape = Shape::create_asteroid(&mut rng);
+    let asteroid_pos = Isometry2::new(Vector2::new(0.5, 0.5), na::zero());
     let astroid_physical = AddCollision::new(asteroid_pos, Vector2::new(0.25, 0.5));
 
     world
         .create_entity()
         .with(astroid_shape)
         .with(astroid_physical)
+        .with(Renderable::new(Color::new(1.0, 1.0, 1.0, 1.0)))
+        .build();
+
+    let astroid_shape2 = Shape::create_asteroid(&mut rng);
+    let asteroid_pos2 = Isometry2::new(Vector2::new(-0.5, 0.5), na::zero());
+    let astroid_physical2 = AddCollision::new(asteroid_pos2, Vector2::new(-0.25, 0.5));
+    world
+        .create_entity()
+        .with(astroid_shape2)
+        .with(astroid_physical2)
         .with(Renderable::new(Color::new(1.0, 1.0, 1.0, 1.0)))
         .build();
 

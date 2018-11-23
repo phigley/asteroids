@@ -3,7 +3,7 @@ use std;
 use specs::storage::BTreeStorage;
 use specs::{Component, Join, Read, ReadStorage, System, WriteStorage};
 
-use na::{UnitComplex, Vector2};
+use na::Vector2;
 
 use input::Input;
 use physics::Physical;
@@ -42,28 +42,23 @@ impl<'a> System<'a> for PlayerController {
 
         for (player, mut physical) in (&player, &mut physical).join() {
             if input.actions.accel_forward {
-                let delta_velocity = player.forward_acceleration * input.frame_time;
-                physical.vel += physical.pos.rotation * Vector2::new(0.0, delta_velocity);
+                physical.add_relative_pulse(player.forward_acceleration * Vector2::y());
             }
 
             if input.actions.accel_right {
-                let delta_velocity = player.lateral_acceleration * input.frame_time;
-                physical.vel += physical.pos.rotation * Vector2::new(delta_velocity, 0.0);
+                physical.add_relative_pulse(player.lateral_acceleration * Vector2::x());
             }
 
             if input.actions.accel_left {
-                let delta_velocity = player.lateral_acceleration * input.frame_time;
-                physical.vel += physical.pos.rotation * Vector2::new(-delta_velocity, 0.0);
+                physical.add_relative_pulse(-player.lateral_acceleration * Vector2::x());
             }
 
             if input.actions.turn_right {
-                let delta_angle = UnitComplex::new(-player.angular_acceleration * input.frame_time);
-                physical.pos.rotation *= delta_angle;
+                physical.add_angular_pulse(player.angular_acceleration);
             }
 
             if input.actions.turn_left {
-                let delta_angle = UnitComplex::new(player.angular_acceleration * input.frame_time);
-                physical.pos.rotation *= delta_angle;
+                physical.add_angular_pulse(-player.angular_acceleration);
             }
         }
     }
