@@ -1,9 +1,9 @@
-extern crate graphics;
-extern crate nalgebra as na;
-extern crate ncollide2d;
-extern crate nphysics2d;
-extern crate rand;
-extern crate specs;
+
+use nalgebra as na;
+use ncollide2d;
+use nphysics2d;
+use rand;
+
 
 #[macro_use]
 extern crate specs_derive;
