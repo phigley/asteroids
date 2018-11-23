@@ -82,8 +82,12 @@ impl<'a> System<'a> for Renderer {
         self.screen.clear(self.clear_color);
 
         for (shape, mut renderable, physical) in (&shapes, &mut renderables, &physicals).join() {
-            let render_transform =
-                RenderTransform::new(physical.position(), self.max_x, self.max_y, shape.radius);
+            let render_transform = RenderTransform::new(
+                physical.render_position(),
+                self.max_x,
+                self.max_y,
+                shape.radius,
+            );
 
             match renderable.screen_shape {
                 Some(ref s) => render_transform.draw_shape(&mut self.screen, renderable.color, s),

@@ -32,6 +32,8 @@ pub struct Physical {
     pos: Isometry2<f32>,
     vel: Vector2<f32>,
 
+    render_pos: Isometry2<f32>,
+
     pulse_accel: Vector2<f32>,
     pulse_rot: f32,
 
@@ -43,14 +45,18 @@ impl Physical {
         Physical {
             pos,
             vel,
+
+            render_pos: pos,
+
             pulse_accel: Vector2::new(0.0, 0.0),
             pulse_rot: 0.0,
+
             body_handle,
         }
     }
 
-    pub fn position(&self) -> Isometry2<f32> {
-        self.pos
+    pub fn render_position(&self) -> Isometry2<f32> {
+        self.render_pos
     }
 
     pub fn add_relative_pulse(&mut self, accel: Vector2<f32>) {
@@ -90,10 +96,13 @@ impl Physical {
         }
     }
 
-    fn apply_step(&mut self, world: &World<f32>) {
+    fn apply_step(&mut self, world: &World<f32>, extra_frame_time: f32) {
         if let Some(ref rigid_body) = world.rigid_body(self.body_handle) {
             self.pos = rigid_body.position();
             self.vel = rigid_body.velocity().linear;
+
+            self.render_pos = self.pos;
+            self.render_pos.translation.vector += self.vel * extra_frame_time;
         }
         self.pulse_accel = Vector2::new(0.0, 0.0);
         self.pulse_rot = 0.0;
@@ -206,6 +215,7 @@ pub struct Physics {
     max_x: f32,
     max_y: f32,
     max_speed: f32,
+    extra_frame_time: f32,
 }
 
 impl Physics {
@@ -216,6 +226,23 @@ impl Physics {
             max_x,
             max_y,
             max_speed,
+            extra_frame_time: 0.0,
+        }
+    }
+
+    fn calc_step_time(&mut self, frame_time: f32) -> (i32, f32) {
+        let step_time = frame_time + self.extra_frame_time;
+
+        let step_frames = step_time * 60.0;
+
+        // If we are going to execute too many frames, just clamp it.
+        if step_frames > 6.0 {
+            self.extra_frame_time = 0.0;
+            (6, 0.1)
+        } else {
+            let full_frames = f32::floor(step_frames);
+            self.extra_frame_time = (step_frames - full_frames) / 60.0;
+            (full_frames as i32, full_frames / 60.0)
         }
     }
 }
@@ -230,11 +257,7 @@ impl<'a> System<'a> for Physics {
     fn run(&mut self, data: Self::SystemData) {
         let (input, mut physics_world, mut physical) = data;
 
-        // PLH_TODO - accumulate left-over frame time
-        let physics_steps_float =
-            f32::max(1.0, f32::min(f32::floor(input.frame_time * 60.0), 10.0));
-        let physics_steps = physics_steps_float as i32;
-        let physics_frame_time = physics_steps_float / 60.0;
+        let (physics_steps, physics_frame_time) = self.calc_step_time(input.frame_time);
 
         for physical in (&mut physical).join() {
             physical.apply_dynamics(&mut physics_world.world, physics_frame_time, self.max_speed);
@@ -246,7 +269,7 @@ impl<'a> System<'a> for Physics {
         }
 
         for physical in (&mut physical).join() {
-            physical.apply_step(&physics_world.world);
+            physical.apply_step(&physics_world.world, self.extra_frame_time);
             physical.apply_wraparound(&mut physics_world.world, self.max_x, self.max_y);
         }
     }
