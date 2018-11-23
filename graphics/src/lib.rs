@@ -17,7 +17,7 @@ pub mod model;
 pub mod screen;
 pub mod shape;
 
-pub use frame_timer::FrameTimer;
+pub use crate::frame_timer::FrameTimer;
 
 mod cursor;
 mod graphic_device;
