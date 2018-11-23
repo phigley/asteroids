@@ -1,7 +1,7 @@
 use std::f32;
 
-use na;
-use na::Point2;
+use crate::na;
+use crate::na::Point2;
 use rand::distributions::{Distribution, Range};
 use rand::Rng;
 use specs::{Component, VecStorage};

@@ -21,13 +21,13 @@ use graphics::color::Color;
 use graphics::errors::ScreenCreateError;
 use specs::{Builder, DispatcherBuilder, World};
 
-use na::{Isometry2, Vector2};
+use crate::na::{Isometry2, Vector2};
 
-use input::Input;
-use physics::{AddCollision, CollisionCreator, Physics};
-use player::{Player, PlayerController};
-use renderer::{Renderable, Renderer};
-use shape::Shape;
+use crate::input::Input;
+use crate::physics::{AddCollision, CollisionCreator, Physics};
+use crate::player::{Player, PlayerController};
+use crate::renderer::{Renderable, Renderer};
+use crate::shape::Shape;
 
 fn main() {
     if let Err(error) = run() {

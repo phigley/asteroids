@@ -10,8 +10,8 @@ use specs::{
     Write, WriteStorage,
 };
 
-use input::Input;
-use shape::Shape;
+use crate::input::Input;
+use crate::shape::Shape;
 
 #[derive(Component)]
 #[storage(HashMapStorage)]

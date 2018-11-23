@@ -4,15 +4,15 @@ use graphics::events::{Event, Key};
 use graphics::screen::Screen;
 use graphics::shape::Shape as ScreenShape;
 use graphics::FrameTimer;
-use na;
+use crate::na;
 
-use na::{Isometry2, Similarity2, Translation2, Vector2};
+use crate::na::{Isometry2, Similarity2, Translation2, Vector2};
 
 use specs::{Component, Join, ReadStorage, System, VecStorage, Write, WriteStorage};
 
-use input::Input;
-use physics::Physical;
-use shape::Shape;
+use crate::input::Input;
+use crate::physics::Physical;
+use crate::shape::Shape;
 
 #[derive(Component, Debug)]
 #[storage(VecStorage)]

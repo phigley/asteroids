@@ -3,10 +3,10 @@ use std;
 use specs::storage::BTreeStorage;
 use specs::{Component, Join, Read, ReadStorage, System, WriteStorage};
 
-use na::Vector2;
+use crate::na::Vector2;
 
-use input::Input;
-use physics::Physical;
+use crate::input::Input;
+use crate::physics::Physical;
 
 #[derive(Component, Debug)]
 #[storage(BTreeStorage)]
