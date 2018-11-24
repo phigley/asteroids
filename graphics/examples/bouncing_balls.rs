@@ -1,6 +1,6 @@
-extern crate graphics;
-extern crate nalgebra;
-extern crate specs;
+
+
+
 
 #[macro_use]
 extern crate specs_derive;

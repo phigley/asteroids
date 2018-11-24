@@ -1,5 +1,5 @@
-extern crate graphics;
-extern crate nalgebra;
+
+
 
 use graphics::{color, events, model, screen};
 

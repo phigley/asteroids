@@ -3,11 +3,11 @@ extern crate gfx;
 #[macro_use]
 extern crate quick_error;
 
-extern crate gfx_device_gl;
-extern crate gfx_window_glutin;
-extern crate glutin;
-extern crate nalgebra;
-extern crate time;
+use gfx_device_gl;
+use gfx_window_glutin;
+use glutin;
+
+
 
 pub mod color;
 pub mod errors;

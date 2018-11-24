@@ -1,6 +1,6 @@
-extern crate graphics;
-extern crate nalgebra;
-extern crate time;
+
+
+
 
 use graphics::{color, events, model, screen, FrameTimer};
 

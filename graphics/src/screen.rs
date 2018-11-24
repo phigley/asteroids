@@ -85,7 +85,7 @@ impl Screen {
     }
 
     /// Draws a model.
-    pub fn draw_model(&mut self, model: &model::Model) {
+    pub fn draw_model(&mut self, model: &model::Model<'_>) {
         self.draw_shape(&model.transform, model.color, &model.shape);
     }
 
