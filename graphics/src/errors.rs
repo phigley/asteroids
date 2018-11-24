@@ -1,7 +1,7 @@
 use gfx;
 use std;
 
-quick_error!{
+quick_error! {
     #[derive(Debug)]
     pub enum ScreenCreateError {
         PipelineFailure( root_name: &'static str,

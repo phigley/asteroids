@@ -1,14 +1,14 @@
+use specs::{Component, Join, ReadStorage, System, VecStorage, Write, WriteStorage};
+
+use crate::na;
+use crate::na::{Isometry2, Similarity2, Translation2, Vector2};
+
 use graphics::color::Color;
 use graphics::errors::ScreenCreateError;
 use graphics::events::{Event, Key};
 use graphics::screen::Screen;
 use graphics::shape::Shape as ScreenShape;
 use graphics::FrameTimer;
-use crate::na;
-
-use crate::na::{Isometry2, Similarity2, Translation2, Vector2};
-
-use specs::{Component, Join, ReadStorage, System, VecStorage, Write, WriteStorage};
 
 use crate::input::Input;
 use crate::physics::Physical;

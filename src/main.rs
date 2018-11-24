@@ -1,9 +1,7 @@
-
 use nalgebra as na;
 use ncollide2d;
 use nphysics2d;
 use rand;
-
 
 #[macro_use]
 extern crate specs_derive;
@@ -52,7 +50,8 @@ fn run() -> Result<(), AppError> {
             Physics::new(renderer.get_max_coords()),
             "physics",
             &["player", "collision_creator"],
-        ).with_thread_local(renderer)
+        )
+        .with_thread_local(renderer)
         .build();
 
     dispatcher.setup(&mut world.res);

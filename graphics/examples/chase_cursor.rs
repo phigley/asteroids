@@ -1,7 +1,3 @@
-
-
-
-
 use graphics::{color, events, model, screen, FrameTimer};
 
 use nalgebra::{Similarity2, Vector2};

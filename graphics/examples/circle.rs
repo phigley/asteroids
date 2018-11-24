@@ -1,6 +1,3 @@
-
-
-
 use graphics::{color, events, model, screen};
 
 use nalgebra::Similarity2;

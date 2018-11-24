@@ -7,8 +7,6 @@ use gfx_device_gl;
 use gfx_window_glutin;
 use glutin;
 
-
-
 pub mod color;
 pub mod errors;
 pub mod events;
@@ -26,7 +24,7 @@ mod utils;
 pub type ColorFormat = gfx::format::Rgba8;
 pub type DepthFormat = gfx::format::DepthStencil;
 
-gfx_defines!{
+gfx_defines! {
     vertex Vertex {
         pos: [f32;2] = "pos2D",
     }
