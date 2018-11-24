@@ -2,7 +2,7 @@ use std::f32;
 
 use crate::na;
 use crate::na::Point2;
-use rand::distributions::{Distribution, Range};
+use rand::distributions::{Distribution, Uniform};
 use rand::Rng;
 use specs::{Component, VecStorage};
 
@@ -77,20 +77,20 @@ impl Shape {
 
 struct Noise {
     base_radius: f32,
-    radius_var: Range<f32>,
+    radius_var: Uniform<f32>,
     angle_delta: f32,
-    angle_var: Range<f32>,
+    angle_var: Uniform<f32>,
     num_points: u16,
 }
 
 impl Noise {
     fn new(max_radius: f32, max_radial_var: f32, max_angle_var: f32, num_points: u16) -> Self {
         let base_radius = max_radius * (1.0 - max_radial_var);
-        let radius_var = Range::new(0.0, max_radius * max_radial_var);
+        let radius_var = Uniform::new(0.0, max_radius * max_radial_var);
 
         let angle_delta = 2.0 * f32::consts::PI / f32::from(num_points);
 
-        let angle_var = Range::new(0.0, max_angle_var * angle_delta);
+        let angle_var = Uniform::new(0.0, max_angle_var * angle_delta);
 
         Noise {
             base_radius,

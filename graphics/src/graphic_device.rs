@@ -4,7 +4,6 @@ use gfx_window_glutin;
 use glutin;
 
 use glutin::dpi::{LogicalSize, PhysicalSize};
-use glutin::GlContext;
 
 use gfx::traits::FactoryExt;
 use gfx::Device;
