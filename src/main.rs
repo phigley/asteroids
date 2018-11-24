@@ -27,13 +27,7 @@ use crate::player::{Player, PlayerController};
 use crate::renderer::{Renderable, Renderer};
 use crate::shape::Shape;
 
-fn main() {
-    if let Err(error) = run() {
-        println!("{}", error);
-    }
-}
-
-fn run() -> Result<(), AppError> {
+fn main() -> Result<(), AppError> {
     let width = 800.0;
     let height = 600.0;
 
