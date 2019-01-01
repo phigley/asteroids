@@ -45,7 +45,7 @@ impl GraphicDevice {
                 builder,
                 glutin::ContextBuilder::new(),
                 &events_loop,
-            );
+            )?;
 
         let encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
 
