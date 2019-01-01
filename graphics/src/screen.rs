@@ -97,7 +97,7 @@ impl Screen {
         shape: &shape::Shape,
     ) {
         let vals = transform.to_homogeneous();
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let draw_transform = Matrix4::new(
             vals[0], vals[3], 0.0, vals[6],
             vals[1], vals[4], 0.0, vals[7],
