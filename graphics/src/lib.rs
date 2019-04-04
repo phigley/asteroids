@@ -3,10 +3,6 @@ extern crate gfx;
 #[macro_use]
 extern crate quick_error;
 
-use gfx_device_gl;
-use gfx_window_glutin;
-use glutin;
-
 pub mod color;
 pub mod errors;
 pub mod events;

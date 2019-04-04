@@ -1,8 +1,8 @@
-use crate::na::{Isometry2, Point2, UnitComplex, Vector2};
+use crate::na::{Isometry2, UnitComplex, Vector2};
 use crate::ncollide2d::shape::{Polyline, ShapeHandle};
 use crate::nphysics2d::{
-    algebra::Inertia2,
-    object::{BodyHandle, Material},
+    algebra::Velocity2,
+    object::{BodyHandle, ColliderDesc, RigidBodyDesc},
     world::World,
 };
 use specs::{
@@ -86,7 +86,7 @@ impl Physical {
 
         if self.pulse_rot != 0.0 {
             if let Some(ref mut rigid_body) = world.rigid_body_mut(self.body_handle) {
-                let mut position = rigid_body.position();
+                let mut position = *rigid_body.position();
 
                 let delta_angle = UnitComplex::new(-self.pulse_rot * frame_time);
                 position.rotation *= delta_angle;
@@ -98,7 +98,7 @@ impl Physical {
 
     fn apply_step(&mut self, world: &World<f32>, extra_frame_time: f32) {
         if let Some(ref rigid_body) = world.rigid_body(self.body_handle) {
-            self.pos = rigid_body.position();
+            self.pos = *rigid_body.position();
             self.vel = rigid_body.velocity().linear;
 
             self.render_pos = self.pos;
@@ -167,45 +167,21 @@ impl<'a> System<'a> for CollisionCreator {
         let (lazy, mut physics_world, entities, add_collisions, shapes) = data;
 
         for (e, add_collision, shape) in (&entities, &add_collisions, &shapes).join() {
-            let center_of_mass: Point2<f32> = {
-                let mut result: Vector2<f32> =
-                    shape
-                        .verts
-                        .iter()
-                        .fold(Vector2::new(0.0, 0.0), |mut acc, v| {
-                            acc.x += v.x;
-                            acc.y += v.y;
-                            acc
-                        });
-                result /= shape.verts.len() as f32;
-                Point2::from(result)
-            };
+            let shape_handle = ShapeHandle::new(Polyline::new(shape.verts.clone(), None));
 
-            let inertia = Inertia2::new(1.0, 1.0);
+            let collider_desc = ColliderDesc::new(shape_handle).margin(0.002);
 
-            let shape_handle = ShapeHandle::new(Polyline::new(shape.verts.clone()));
-
-            let body_handle =
-                physics_world
-                    .world
-                    .add_rigid_body(add_collision.pos, inertia, center_of_mass);
-
-            physics_world.world.add_collider(
-                0.002,
-                shape_handle,
-                body_handle,
-                Isometry2::identity(),
-                Material::default(),
-            );
-
-            if let Some(ref mut rigid_body) = physics_world.world.rigid_body_mut(body_handle) {
-                rigid_body.set_linear_velocity(add_collision.vel);
-            }
+            let rigid_body = RigidBodyDesc::new()
+                .collider(&collider_desc)
+                .mass(1.0)
+                .position(add_collision.pos)
+                .velocity(Velocity2::new(add_collision.vel, 0.0))
+                .build(&mut physics_world.world);
 
             lazy.remove::<AddCollision>(e);
             lazy.insert(
                 e,
-                Physical::new(add_collision.pos, add_collision.vel, body_handle),
+                Physical::new(add_collision.pos, add_collision.vel, rigid_body.handle()),
             );
         }
     }

@@ -17,7 +17,7 @@ use super::errors;
 use super::shape;
 
 pub struct GraphicDevice {
-    window: glutin::GlWindow,
+    window: glutin::WindowedContext,
     encoder: gfx::Encoder<gfx_device_gl::Resources, gfx_device_gl::CommandBuffer>,
     device: gfx_device_gl::Device,
     data: super::pipe::Data<gfx_device_gl::Resources>,
