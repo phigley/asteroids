@@ -24,13 +24,17 @@ impl Screen {
     ) -> Result<Screen, errors::ScreenCreateError> {
         let events_loop = glutin::EventsLoop::new();
 
-        let device = GraphicDevice::create(width, height, title, &events_loop)?;
+        let (device, logical_size, dpi_factor) =
+            GraphicDevice::create(width, height, title, &events_loop)?;
 
         Ok(Screen {
             events_loop,
             implementation: ScreenImplementation {
                 device,
                 cursor: Cursor::new(width, height),
+                pending_resize: false,
+                logical_size: logical_size,
+                dpi_factor: dpi_factor,
             },
         })
     }
@@ -76,6 +80,8 @@ impl Screen {
 
                 glutin::Event::Suspended(_) => (),
             });
+
+        implementation.trigger_possible_resize(&mut callback);
     }
 
     /// Clear the screen.
@@ -124,6 +130,10 @@ impl Screen {
 struct ScreenImplementation {
     device: GraphicDevice,
     cursor: Cursor,
+
+    pending_resize: bool,
+    logical_size: glutin::dpi::LogicalSize,
+    dpi_factor: f64,
 }
 
 impl ScreenImplementation {
@@ -143,14 +153,13 @@ impl ScreenImplementation {
             | glutin::WindowEvent::CloseRequested => callback(events::Event::Exit),
 
             glutin::WindowEvent::Resized(logical_size) => {
-                // #PLH_TODO - incorporate dpi factor.
-                let (width, height): (f64, f64) = logical_size.into();
+                self.pending_resize = true;
+                self.logical_size = logical_size;
+            }
 
-                self.device.set_window_size(width, height);
-                self.cursor.set_window_size(width, height);
-
-                let mouse_pos = self.cursor.get_mouse_pos();
-                callback(events::Event::Resize { mouse_pos });
+            glutin::WindowEvent::HiDpiFactorChanged(dpi_factor) => {
+                self.pending_resize = true;
+                self.dpi_factor = dpi_factor;
             }
 
             glutin::WindowEvent::KeyboardInput {
@@ -201,6 +210,23 @@ impl ScreenImplementation {
             }
 
             _ => (),
+        }
+    }
+
+    fn trigger_possible_resize<F>(&mut self, callback: &mut F)
+    where
+        F: FnMut(events::Event),
+    {
+        if self.pending_resize {
+            self.pending_resize = false;
+
+            self.device
+                .set_window_size(&self.logical_size, self.dpi_factor);
+            self.cursor
+                .set_window_size(self.logical_size.width, self.logical_size.height);
+
+            let mouse_pos = self.cursor.get_mouse_pos();
+            callback(events::Event::Resize { mouse_pos });
         }
     }
 }

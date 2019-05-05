@@ -17,7 +17,7 @@ use super::errors;
 use super::shape;
 
 pub struct GraphicDevice {
-    window: glutin::WindowedContext,
+    window: glutin::WindowedContext<glutin::PossiblyCurrent>,
     encoder: gfx::Encoder<gfx_device_gl::Resources, gfx_device_gl::CommandBuffer>,
     device: gfx_device_gl::Device,
     data: super::pipe::Data<gfx_device_gl::Resources>,
@@ -33,7 +33,7 @@ impl GraphicDevice {
         height: f64,
         title: &str,
         events_loop: &glutin::EventsLoop,
-    ) -> Result<GraphicDevice, errors::ScreenCreateError> {
+    ) -> Result<(GraphicDevice, LogicalSize, f64), errors::ScreenCreateError> {
         let logical_size = LogicalSize::new(width, height);
 
         let builder = glutin::WindowBuilder::new()
@@ -67,6 +67,12 @@ impl GraphicDevice {
             out_color: main_color,
         };
 
+        let actual_logical_size = match window.window().get_inner_size() {
+            Some(logical_size) => logical_size,
+            None => LogicalSize::new(width, height),
+        };
+        let actual_dpi_factor = window.window().get_hidpi_factor();
+
         let mut device = GraphicDevice {
             window,
             encoder,
@@ -78,13 +84,13 @@ impl GraphicDevice {
             factory,
         };
 
-        device.update_projection(width, height);
+        device.update_projection(&actual_logical_size, actual_dpi_factor);
 
-        Ok(device)
+        Ok((device, actual_logical_size, actual_dpi_factor))
     }
 
-    pub fn set_window_size(&mut self, width: f64, height: f64) {
-        self.update_projection(width, height);
+    pub fn set_window_size(&mut self, logical_size: &LogicalSize, dpi_factor: f64) {
+        self.update_projection(logical_size, dpi_factor);
         gfx_window_glutin::update_views(
             &self.window,
             &mut self.data.out_color,
@@ -92,7 +98,10 @@ impl GraphicDevice {
         );
     }
 
-    fn update_projection(&mut self, width: f64, height: f64) {
+    fn update_projection(&mut self, logical_size: &LogicalSize, dpi_factor: f64) {
+        let width = logical_size.width;
+        let height = logical_size.height;
+
         let initial_projection: Orthographic3<f32> = if width >= height {
             let view_ratio = (width / height) as f32;
             Orthographic3::new(-view_ratio, view_ratio, -1.0, 1.0, -1.0, 1.0)
@@ -110,9 +119,7 @@ impl GraphicDevice {
         self.encoder
             .update_constant_buffer(&self.data.view_uniforms, &initial_view_uniforms);
 
-        let dpi_factor = self.window.get_hidpi_factor();
-
-        let physical_size = PhysicalSize::from_logical(LogicalSize::new(width, height), dpi_factor);
+        let physical_size = PhysicalSize::from_logical(*logical_size, dpi_factor);
         self.window.resize(physical_size);
     }
 
