@@ -17,7 +17,7 @@ mod shape;
 
 use graphics::color::Color;
 use graphics::errors::ScreenCreateError;
-use specs::{Builder, DispatcherBuilder, World};
+use specs::{Builder, DispatcherBuilder, World, WorldExt};
 
 use crate::na::{Isometry2, Vector2};
 
@@ -48,7 +48,7 @@ fn main() -> Result<(), AppError> {
         .with_thread_local(renderer)
         .build();
 
-    dispatcher.setup(&mut world.res);
+    dispatcher.setup(&mut world);
 
     let player_pos = Isometry2::new(Vector2::new(0.0, 0.0), na::zero());
 
@@ -85,7 +85,7 @@ fn main() -> Result<(), AppError> {
         .build();
 
     while !world.read_resource::<Input>().should_exit {
-        dispatcher.dispatch(&world.res);
+        dispatcher.dispatch(&world);
         world.maintain();
     }
 
