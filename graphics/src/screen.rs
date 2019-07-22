@@ -33,8 +33,8 @@ impl Screen {
                 device,
                 cursor: Cursor::new(width, height),
                 pending_resize: false,
-                logical_size: logical_size,
-                dpi_factor: dpi_factor,
+                logical_size,
+                dpi_factor,
             },
         })
     }
