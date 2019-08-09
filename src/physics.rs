@@ -2,8 +2,13 @@ use crate::na::{Isometry2, UnitComplex, Vector2};
 use crate::ncollide2d::shape::{Polyline, ShapeHandle};
 use crate::nphysics2d::{
     algebra::Velocity2,
-    object::{BodyHandle, ColliderDesc, RigidBodyDesc},
-    world::World,
+    force_generator::DefaultForceGeneratorSet,
+    joint::DefaultJointConstraintSet,
+    object::{
+        BodyPartHandle, ColliderDesc, DefaultBodyHandle, DefaultBodySet, DefaultColliderSet,
+        RigidBodyDesc,
+    },
+    world::{DefaultGeometricalWorld, DefaultMechanicalWorld},
 };
 use specs::{
     Component, Entities, HashMapStorage, Join, LazyUpdate, Read, ReadStorage, System, VecStorage,
@@ -37,11 +42,11 @@ pub struct Physical {
     pulse_accel: Vector2<f32>,
     pulse_rot: f32,
 
-    body_handle: BodyHandle,
+    body_handle: DefaultBodyHandle,
 }
 
 impl Physical {
-    fn new(pos: Isometry2<f32>, vel: Vector2<f32>, body_handle: BodyHandle) -> Self {
+    fn new(pos: Isometry2<f32>, vel: Vector2<f32>, body_handle: DefaultBodyHandle) -> Self {
         Physical {
             pos,
             vel,
@@ -67,7 +72,12 @@ impl Physical {
         self.pulse_rot += angle;
     }
 
-    fn apply_dynamics(&mut self, world: &mut World<f32>, frame_time: f32, max_speed: f32) {
+    fn apply_dynamics(
+        &mut self,
+        bodies: &mut DefaultBodySet<f32>,
+        frame_time: f32,
+        max_speed: f32,
+    ) {
         // Clamp velocity.
         let accel = self.pulse_accel.norm();
         if accel > 0.0 {
@@ -79,13 +89,13 @@ impl Physical {
             }
 
             // Apply velocity.
-            if let Some(ref mut rigid_body) = world.rigid_body_mut(self.body_handle) {
+            if let Some(ref mut rigid_body) = bodies.rigid_body_mut(self.body_handle) {
                 rigid_body.set_linear_velocity(self.vel);
             }
         }
 
         if self.pulse_rot != 0.0 {
-            if let Some(ref mut rigid_body) = world.rigid_body_mut(self.body_handle) {
+            if let Some(ref mut rigid_body) = bodies.rigid_body_mut(self.body_handle) {
                 let mut position = *rigid_body.position();
 
                 let delta_angle = UnitComplex::new(-self.pulse_rot * frame_time);
@@ -96,8 +106,8 @@ impl Physical {
         }
     }
 
-    fn apply_step(&mut self, world: &World<f32>, extra_frame_time: f32) {
-        if let Some(ref rigid_body) = world.rigid_body(self.body_handle) {
+    fn apply_step(&mut self, bodies: &DefaultBodySet<f32>, extra_frame_time: f32) {
+        if let Some(ref rigid_body) = bodies.rigid_body(self.body_handle) {
             self.pos = *rigid_body.position();
             self.vel = rigid_body.velocity().linear;
 
@@ -108,7 +118,7 @@ impl Physical {
         self.pulse_rot = 0.0;
     }
 
-    fn apply_wraparound(&mut self, world: &mut World<f32>, max_x: f32, max_y: f32) {
+    fn apply_wraparound(&mut self, bodies: &mut DefaultBodySet<f32>, max_x: f32, max_y: f32) {
         let mut modified = false;
 
         while self.pos.translation.vector.x >= max_x {
@@ -132,56 +142,69 @@ impl Physical {
         }
 
         if modified {
-            if let Some(ref mut rigid_body) = world.rigid_body_mut(self.body_handle) {
+            if let Some(ref mut rigid_body) = bodies.rigid_body_mut(self.body_handle) {
                 rigid_body.set_position(self.pos);
             }
         }
     }
 }
 
-pub struct PhysicsWorld {
-    world: World<f32>,
+pub struct Bodies(DefaultBodySet<f32>);
+
+impl Default for Bodies {
+    fn default() -> Self {
+        Bodies(DefaultBodySet::new())
+    }
 }
 
-impl Default for PhysicsWorld {
+pub struct Colliders(DefaultColliderSet<f32>);
+
+impl Default for Colliders {
     fn default() -> Self {
-        PhysicsWorld {
-            world: World::new(),
-        }
+        Colliders(DefaultColliderSet::new())
     }
 }
 
 pub struct CollisionCreator;
 
 impl<'a> System<'a> for CollisionCreator {
-    //#[allow(clippy::type_complexity)]
+    #[allow(clippy::type_complexity)]
     type SystemData = (
         Read<'a, LazyUpdate>,
-        Write<'a, PhysicsWorld>,
+        Write<'a, Bodies>,
+        Write<'a, Colliders>,
         Entities<'a>,
         ReadStorage<'a, AddCollision>,
         ReadStorage<'a, Shape>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (lazy, mut physics_world, entities, add_collisions, shapes) = data;
+        let (lazy, mut wrapped_bodies, mut wrapped_colliders, entities, add_collisions, shapes) =
+            data;
 
         for (e, add_collision, shape) in (&entities, &add_collisions, &shapes).join() {
             let shape_handle = ShapeHandle::new(Polyline::new(shape.verts.clone(), None));
 
-            let collider_desc = ColliderDesc::new(shape_handle).margin(0.002);
+            let bodies = &mut wrapped_bodies.0;
+            let colliders = &mut wrapped_colliders.0;
 
             let rigid_body = RigidBodyDesc::new()
-                .collider(&collider_desc)
                 .mass(1.0)
                 .position(add_collision.pos)
                 .velocity(Velocity2::new(add_collision.vel, 0.0))
-                .build(&mut physics_world.world);
+                .build();
+
+            let rigid_body_handle = bodies.insert(rigid_body);
+
+            let collider = ColliderDesc::new(shape_handle)
+                .margin(0.002)
+                .build(BodyPartHandle(rigid_body_handle, 0));
+            colliders.insert(collider);
 
             lazy.remove::<AddCollision>(e);
             lazy.insert(
                 e,
-                Physical::new(add_collision.pos, add_collision.vel, rigid_body.handle()),
+                Physical::new(add_collision.pos, add_collision.vel, rigid_body_handle),
             );
         }
     }
@@ -192,17 +215,30 @@ pub struct Physics {
     max_y: f32,
     max_speed: f32,
     extra_frame_time: f32,
+
+    joints: DefaultJointConstraintSet<f32>,
+    forces: DefaultForceGeneratorSet<f32>,
+    gworld: DefaultGeometricalWorld<f32>,
+    mworld: DefaultMechanicalWorld<f32>,
 }
 
 impl Physics {
     pub fn new((max_x, max_y): (f32, f32)) -> Self {
         let max_speed = 1.0;
 
+        let joints = DefaultJointConstraintSet::new();
+        let forces = DefaultForceGeneratorSet::new();
+
         Physics {
             max_x,
             max_y,
             max_speed,
             extra_frame_time: 0.0,
+
+            joints,
+            forces,
+            gworld: DefaultGeometricalWorld::new(),
+            mworld: DefaultMechanicalWorld::new(Vector2::zeros()),
         }
     }
 
@@ -226,27 +262,37 @@ impl Physics {
 impl<'a> System<'a> for Physics {
     type SystemData = (
         Read<'a, Input>,
-        Write<'a, PhysicsWorld>,
+        Write<'a, Bodies>,
+        Write<'a, Colliders>,
         WriteStorage<'a, Physical>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (input, mut physics_world, mut physical) = data;
+        let (input, mut wrapped_bodies, mut wrapped_colliders, mut physical) = data;
+
+        let bodies = &mut wrapped_bodies.0;
+        let colliders = &mut wrapped_colliders.0;
 
         let (physics_steps, physics_frame_time) = self.calc_step_time(input.frame_time);
 
         for physical in (&mut physical).join() {
-            physical.apply_dynamics(&mut physics_world.world, physics_frame_time, self.max_speed);
-            physical.apply_wraparound(&mut physics_world.world, self.max_x, self.max_y);
+            physical.apply_dynamics(bodies, physics_frame_time, self.max_speed);
+            physical.apply_wraparound(bodies, self.max_x, self.max_y);
         }
 
         for _ in 0..physics_steps {
-            physics_world.world.step();
+            self.mworld.step(
+                &mut self.gworld,
+                bodies,
+                colliders,
+                &mut self.joints,
+                &mut self.forces,
+            );
         }
 
         for physical in (&mut physical).join() {
-            physical.apply_step(&physics_world.world, self.extra_frame_time);
-            physical.apply_wraparound(&mut physics_world.world, self.max_x, self.max_y);
+            physical.apply_step(bodies, self.extra_frame_time);
+            physical.apply_wraparound(bodies, self.max_x, self.max_y);
         }
     }
 }
