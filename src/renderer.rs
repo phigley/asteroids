@@ -98,7 +98,6 @@ impl<'a> System<'a> for Renderer {
                     *s = Some(new_s);
                 }
             };
-            ;
         }
 
         self.screen.flush();
