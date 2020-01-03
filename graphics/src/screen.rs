@@ -204,8 +204,6 @@ impl ScreenImplementation {
                         }),
                         _ => (),
                     }
-                } else {
-
                 }
             }
 
