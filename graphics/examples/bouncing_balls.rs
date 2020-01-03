@@ -12,6 +12,8 @@ use specs::{
     Builder, Component, DispatcherBuilder, Join, Read, System, VecStorage, World, WriteStorage,
 };
 
+use specs::prelude::*;
+
 use std::f32;
 
 fn main() {
@@ -33,7 +35,7 @@ fn main() {
     world.register::<Velocity>();
     world.register::<BallRenderable>();
 
-    world.add_resource(FrameTime(0.0));
+    world.insert(FrameTime(0.0));
 
     let mut frame_timer = FrameTimer::new();
 
@@ -101,7 +103,7 @@ fn main() {
             _ => (),
         });
 
-        dispatcher.dispatch(&world.res);
+        dispatcher.dispatch(&world);
 
         {
             let ball_renderables = world.read_storage::<BallRenderable>();

@@ -1,15 +1,19 @@
 use std;
-use time::{Duration, PreciseTime};
+use std::time::{Duration, Instant};
 
 pub struct FrameTimer {
-    start_time: PreciseTime,
-    frame_time: PreciseTime,
+    // Time that the simulation was started, used to calculate total elapsed time.
+    start_time: Instant,
+    // Time of the previous frame, used to calculate frame time.
+    frame_time: Instant,
+
+    // Duration of the previous frame in seconds.
     frame_delta: f32,
 }
 
 impl FrameTimer {
     pub fn new() -> Self {
-        let start_time = PreciseTime::now();
+        let start_time = Instant::now();
         FrameTimer {
             start_time,
             frame_time: start_time,
@@ -18,33 +22,25 @@ impl FrameTimer {
     }
 
     pub fn update(&mut self, minimum_ms: u32, max_frame_delta: f32) -> f32 {
-        let presleep_time = PreciseTime::now();
+        // Sleep if less time than the minimum requested has elapsed.
+        let minimum_duration = Duration::from_millis(u64::from(minimum_ms));
+        let presleep_frame_duration = self.frame_time.elapsed();
 
-        let sleep_duration =
-            Duration::milliseconds(i64::from(minimum_ms)) - self.frame_time.to(presleep_time);
-        let new_time = if let Ok(sleep_duration_std) = sleep_duration.to_std() {
-            std::thread::sleep(sleep_duration_std);
-            PreciseTime::now()
-        } else {
-            presleep_time
+        if let Some(sleep_duration) = minimum_duration.checked_sub(presleep_frame_duration) {
+            std::thread::sleep(sleep_duration);
         };
 
-        if let Some(frame_time_us) = self.frame_time.to(new_time).num_microseconds() {
-            if frame_time_us > 0 {
-                self.frame_delta = (frame_time_us as f32) * 1e-6;
-                self.frame_time = new_time;
+        // Record the frame delta.
+        self.frame_delta = f32::min(self.frame_time.elapsed().as_secs_f32(), max_frame_delta);
 
-                if self.frame_delta > max_frame_delta {
-                    self.frame_delta = max_frame_delta;
-                }
-            }
-        }
+        // Start a new frame time.
+        self.frame_time = Instant::now();
 
         self.frame_delta
     }
 
     pub fn elapsed(&self) -> Duration {
-        self.start_time.to(self.frame_time)
+        self.start_time.elapsed()
     }
 
     pub fn frame_delta(&self) -> f32 {
