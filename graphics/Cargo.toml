@@ -5,10 +5,10 @@ authors = ["Peter Higley <phigley@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-gfx = "*"
-gfx_window_glutin = "*"
-gfx_device_gl = "*"
-glutin = "*"
+gfx = "0.18.2"
+gfx_window_glutin = "0.31.0"
+gfx_device_gl = "0.16"
+glutin = "0.21"
 quick-error = "*"
 nalgebra = "*"
 
