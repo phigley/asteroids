@@ -6,17 +6,15 @@ use rand;
 #[macro_use]
 extern crate specs_derive;
 
-#[macro_use]
-extern crate quick_error;
-
 mod input;
 mod physics;
 mod player;
 mod renderer;
 mod shape;
 
+use anyhow::{Context, Result};
+
 use graphics::color::Color;
-use graphics::errors::ScreenCreateError;
 use specs::{Builder, DispatcherBuilder, World, WorldExt};
 
 use crate::na::{Isometry2, Vector2};
@@ -27,11 +25,11 @@ use crate::player::{Player, PlayerController};
 use crate::renderer::{Renderable, Renderer};
 use crate::shape::Shape;
 
-fn main() -> Result<(), AppError> {
+fn main() -> Result<()> {
     let width = 800.0;
     let height = 600.0;
 
-    let renderer = Renderer::create(width, height)?;
+    let renderer = Renderer::create(width, height).context("Could not create graphics screen")?;
 
     let mut rng = rand::thread_rng();
 
@@ -90,14 +88,4 @@ fn main() -> Result<(), AppError> {
     }
 
     Ok(())
-}
-
-quick_error! {
-    #[derive(Debug)]
-    enum AppError {
-        GraphicsError(err: ScreenCreateError) {
-            from(err: ScreenCreateError) -> (err)
-            display("Could not create graphics screen: {}", err)
-        }
-    }
 }

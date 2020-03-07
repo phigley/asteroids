@@ -8,13 +8,13 @@ use glutin::dpi::{LogicalSize, PhysicalSize};
 use gfx::traits::FactoryExt;
 use gfx::Device;
 
-use quick_error::ResultExt;
-
 use nalgebra::{Matrix4, Orthographic3};
 
 use super::color;
 use super::errors;
 use super::shape;
+
+use errors::ScreenCreateError;
 
 pub struct GraphicDevice {
     window: glutin::WindowedContext<glutin::PossiblyCurrent>,
@@ -55,7 +55,10 @@ impl GraphicDevice {
                 include_bytes!("simple.frag"),
                 super::pipe::new(),
             )
-            .context("simple")?;
+            .map_err(|err| ScreenCreateError::PipelineFailure {
+                source: err,
+                file_name: "simple",
+            })?;
 
         let empty_vertex = [];
         let vbuf = factory.create_vertex_buffer(&empty_vertex);
