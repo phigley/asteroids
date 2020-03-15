@@ -1,16 +1,16 @@
-use gfx;
-use glutin;
-use std;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum ScreenCreateError {
     #[error("Failed to create window")]
-    GlutinFailure(#[from] glutin::CreationError),
+    WindowCreateFailure(#[source] winit::error::OsError),
+
+    #[error("Failed to create adapter")]
+    AdapterCreateFailure,
 
     #[error("Pipeline create failure for {file_name}.[vert,frag] : {source:?}")]
     PipelineFailure {
-        source: gfx::PipelineStateError<std::string::String>,
+        source: std::io::Error,
         file_name: &'static str,
     },
 }

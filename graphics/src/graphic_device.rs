@@ -1,160 +1,275 @@
-use gfx;
-use gfx_device_gl;
-use gfx_window_glutin;
-use glutin;
+use nalgebra::Matrix4;
+use std::cell::RefCell;
+use std::rc::{Rc, Weak};
+use std::vec::Vec;
+use wgpu;
+use wgpu::{
+    BindGroup, Buffer, BufferAddress, BufferUsage, Device, Queue, RenderPipeline, Surface,
+    SwapChain, SwapChainDescriptor,
+};
+use winit::{dpi::LogicalSize, window::Window};
 
-use glutin::dpi::{LogicalSize, PhysicalSize};
-
-use gfx::traits::FactoryExt;
-use gfx::Device;
-
-use nalgebra::{Matrix4, Orthographic3};
-
-use super::color;
-use super::errors;
-use super::shape;
-
-use errors::ScreenCreateError;
+use crate::color::Color;
+use crate::errors::ScreenCreateError;
+use crate::model_transform::ModelTransform;
+use crate::shape::{Shape, ShapeData};
+use crate::uniforms::ViewUniforms;
+use crate::vertex::Vertex;
 
 pub struct GraphicDevice {
-    window: glutin::WindowedContext<glutin::PossiblyCurrent>,
-    encoder: gfx::Encoder<gfx_device_gl::Resources, gfx_device_gl::CommandBuffer>,
-    device: gfx_device_gl::Device,
-    data: super::pipe::Data<gfx_device_gl::Resources>,
-    depth_format: gfx::handle::DepthStencilView<gfx_device_gl::Resources, super::DepthFormat>,
-    pso: gfx::PipelineState<gfx_device_gl::Resources, super::pipe::Meta>,
+    surface: Surface,
+    device: Device,
+    queue: Queue,
+    sc_desc: SwapChainDescriptor,
+    swap_chain: SwapChain,
+    render_pipeline: RenderPipeline,
 
-    factory: gfx_device_gl::Factory,
+    view_uniform_buffer: Buffer,
+    view_uniform_bind_group: BindGroup,
+
+    shapes: Vec<Weak<RefCell<ShapeData>>>,
 }
 
 impl GraphicDevice {
     pub fn create(
-        width: f64,
-        height: f64,
-        title: &str,
-        events_loop: &glutin::EventsLoop,
-    ) -> Result<(GraphicDevice, LogicalSize, f64), errors::ScreenCreateError> {
-        let logical_size = LogicalSize::new(width, height);
+        window: &Window,
+    ) -> Result<(GraphicDevice, LogicalSize<f64>, f64), ScreenCreateError> {
+        let physical_size = window.inner_size();
 
-        let builder = glutin::WindowBuilder::new()
-            .with_title(title)
-            .with_dimensions(logical_size);
+        let surface = wgpu::Surface::create(window);
+        let adapter = wgpu::Adapter::request(&wgpu::RequestAdapterOptions {
+            ..Default::default()
+        })
+        .ok_or(ScreenCreateError::AdapterCreateFailure)?;
 
-        let (window, device, mut factory, main_color, main_depth) =
-            gfx_window_glutin::init::<super::ColorFormat, super::DepthFormat>(
-                builder,
-                glutin::ContextBuilder::new(),
-                &events_loop,
-            )?;
+        let (device, queue) = adapter.request_device(&wgpu::DeviceDescriptor {
+            extensions: wgpu::Extensions {
+                anisotropic_filtering: false,
+            },
+            limits: Default::default(),
+        });
 
-        let encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
+        let sc_desc = SwapChainDescriptor {
+            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+            // We should query for format.
+            format: wgpu::TextureFormat::Bgra8UnormSrgb,
+            width: physical_size.width,
+            height: physical_size.height,
+            present_mode: wgpu::PresentMode::Vsync,
+        };
+        let swap_chain = device.create_swap_chain(&surface, &sc_desc);
 
-        let pso = factory
-            .create_pipeline_simple(
-                include_bytes!("simple.vert"),
-                include_bytes!("simple.frag"),
-                super::pipe::new(),
-            )
-            .map_err(|err| ScreenCreateError::PipelineFailure {
-                source: err,
-                file_name: "simple",
+        let dpi_factor = window.scale_factor();
+        let logical_size = physical_size.to_logical(dpi_factor);
+
+        let view_uniforms = ViewUniforms::from_logical(&logical_size);
+        let view_uniform_buffer = device
+            .create_buffer_mapped(1, BufferUsage::UNIFORM | BufferUsage::COPY_DST)
+            .fill_from_slice(&[view_uniforms]);
+
+        let view_uniform_bind_group_layout =
+            device.create_bind_group_layout(&ViewUniforms::layout_desc());
+
+        let view_uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &view_uniform_bind_group_layout,
+            bindings: &[wgpu::Binding {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer {
+                    buffer: &view_uniform_buffer,
+                    range: 0..std::mem::size_of_val(&view_uniform_buffer) as BufferAddress,
+                },
+            }],
+        });
+
+        let render_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                bind_group_layouts: &[&view_uniform_bind_group_layout],
+            });
+
+        let render_pipeline = {
+            let vs_spirv: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/simple.vert.spv"));
+            let fs_spirv: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/simple.frag.spv"));
+            let vs_data = wgpu::read_spirv(std::io::Cursor::new(vs_spirv)).map_err(|err| {
+                ScreenCreateError::PipelineFailure {
+                    source: err,
+                    file_name: "simple.vert",
+                }
             })?;
+            let fs_data = wgpu::read_spirv(std::io::Cursor::new(fs_spirv)).map_err(|err| {
+                ScreenCreateError::PipelineFailure {
+                    source: err,
+                    file_name: "simple.frag",
+                }
+            })?;
+            let vs_module = device.create_shader_module(&vs_data);
+            let fs_module = device.create_shader_module(&fs_data);
 
-        let empty_vertex = [];
-        let vbuf = factory.create_vertex_buffer(&empty_vertex);
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                layout: &render_pipeline_layout,
+                vertex_stage: wgpu::ProgrammableStageDescriptor {
+                    module: &vs_module,
+                    entry_point: "main",
+                },
+                fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
+                    module: &fs_module,
+                    entry_point: "main",
+                }),
 
-        let data = super::pipe::Data {
-            vbuf,
-            view_uniforms: factory.create_constant_buffer(1),
-            model_uniforms: factory.create_constant_buffer(1),
-            out_color: main_color,
+                rasterization_state: Some(wgpu::RasterizationStateDescriptor {
+                    front_face: wgpu::FrontFace::Ccw,
+                    cull_mode: wgpu::CullMode::Back,
+                    depth_bias: 0,
+                    depth_bias_slope_scale: 0.0,
+                    depth_bias_clamp: 0.0,
+                }),
+
+                color_states: &[wgpu::ColorStateDescriptor {
+                    format: sc_desc.format,
+                    color_blend: wgpu::BlendDescriptor::REPLACE,
+                    alpha_blend: wgpu::BlendDescriptor::REPLACE,
+                    write_mask: wgpu::ColorWrite::ALL,
+                }],
+                primitive_topology: wgpu::PrimitiveTopology::TriangleList,
+                depth_stencil_state: None,
+                index_format: wgpu::IndexFormat::Uint16,
+                vertex_buffers: &[Vertex::desc(), Color::desc(), ModelTransform::desc()],
+                sample_count: 1,
+                sample_mask: !0,
+                alpha_to_coverage_enabled: false,
+            })
         };
 
-        let actual_logical_size = match window.window().get_inner_size() {
-            Some(logical_size) => logical_size,
-            None => LogicalSize::new(width, height),
-        };
-        let actual_dpi_factor = window.window().get_hidpi_factor();
-
-        let mut device = GraphicDevice {
-            window,
-            encoder,
+        let device = GraphicDevice {
+            surface,
             device,
-            data,
-            depth_format: main_depth,
-            pso,
+            queue,
+            sc_desc,
+            swap_chain,
+            render_pipeline,
 
-            factory,
+            view_uniform_buffer,
+            view_uniform_bind_group,
+
+            shapes: Vec::new(),
         };
 
-        device.update_projection(&actual_logical_size, actual_dpi_factor);
-
-        Ok((device, actual_logical_size, actual_dpi_factor))
+        Ok((device, logical_size, dpi_factor))
     }
 
-    pub fn set_window_size(&mut self, logical_size: &LogicalSize, dpi_factor: f64) {
-        self.update_projection(logical_size, dpi_factor);
-        gfx_window_glutin::update_views(
-            &self.window,
-            &mut self.data.out_color,
-            &mut self.depth_format,
+    pub fn set_window_size(&mut self, logical_size: &LogicalSize<f64>, dpi_factor: f64) {
+        let new_size = logical_size.to_physical(dpi_factor);
+        self.sc_desc.width = new_size.width;
+        self.sc_desc.height = new_size.height;
+        self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
+
+        let view_uniforms = ViewUniforms::from_logical(logical_size);
+
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+
+        let staging_buffer = self
+            .device
+            .create_buffer_mapped(1, BufferUsage::COPY_SRC)
+            .fill_from_slice(&[view_uniforms]);
+
+        encoder.copy_buffer_to_buffer(
+            &staging_buffer,
+            0,
+            &self.view_uniform_buffer,
+            0,
+            std::mem::size_of::<ViewUniforms>() as BufferAddress,
         );
+
+        self.queue.submit(&[encoder.finish()]);
     }
 
-    fn update_projection(&mut self, logical_size: &LogicalSize, dpi_factor: f64) {
-        let width = logical_size.width;
-        let height = logical_size.height;
-
-        let initial_projection: Orthographic3<f32> = if width >= height {
-            let view_ratio = (width / height) as f32;
-            Orthographic3::new(-view_ratio, view_ratio, -1.0, 1.0, -1.0, 1.0)
-        } else {
-            let view_ratio = (height / width) as f32;
-            Orthographic3::new(-1.0, 1.0, -view_ratio, view_ratio, -1.0, 1.0)
-        };
-
-        let initial_projection_matrix: Matrix4<f32> = initial_projection.to_homogeneous();
-
-        let initial_view_uniforms = super::ViewUniforms {
-            projection: initial_projection_matrix.into(),
-        };
-
-        self.encoder
-            .update_constant_buffer(&self.data.view_uniforms, &initial_view_uniforms);
-
-        let physical_size = PhysicalSize::from_logical(*logical_size, dpi_factor);
-        self.window.resize(physical_size);
-    }
-
-    pub fn create_shape(&mut self, vertex_data: &[super::Vertex], indices: &[u16]) -> shape::Shape {
-        shape::Shape::new(vertex_data, indices, &mut self.factory)
-    }
-
-    pub fn draw_shape(
+    pub fn create_shape(
         &mut self,
-        transform: &Matrix4<f32>,
-        color: color::Color,
-        shape: &shape::Shape,
-    ) {
-        let locals = super::ModelUniforms {
-            translation: (*transform).into(),
-            color: color.into(),
-        };
-        self.encoder
-            .update_constant_buffer(&self.data.model_uniforms, &locals);
+        vertex_data: &[Vertex],
+        indices: &[u16],
+        name: &'static str,
+    ) -> Shape {
+        let data = Rc::new(RefCell::new(ShapeData::new(
+            &mut self.device,
+            vertex_data,
+            indices,
+        )));
 
-        self.data.vbuf = shape.vbuf.clone();
-        self.encoder.draw(&shape.slice, &self.pso, &self.data);
+        self.shapes.push(Rc::downgrade(&data));
+
+        Shape { data, name }
     }
 
-    pub fn clear(&mut self, clear_color: color::Color) {
-        self.encoder.clear(&self.data.out_color, clear_color.into());
+    pub fn draw_shape(&mut self, transform: Matrix4<f32>, color: Color, shape: &Shape) {
+        let mut shape_data = shape.data.borrow_mut();
+
+        // Add this draw request to our instances.
+        shape_data
+            .instance_transforms
+            .push(ModelTransform::new(transform));
+        shape_data.instance_colors.push(color);
     }
 
-    pub fn flush(&mut self) {
-        self.encoder.flush(&mut self.device);
+    pub fn render_frame(&mut self, clear_color: wgpu::Color) {
+        self.shapes
+            .retain(|shape_data| shape_data.strong_count() > 0);
 
-        self.window.swap_buffers().unwrap();
-        self.device.cleanup();
+        let frame = self.swap_chain.get_next_texture();
+
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+
+        {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+                    attachment: &frame.view,
+                    resolve_target: None,
+                    load_op: wgpu::LoadOp::Clear,
+                    store_op: wgpu::StoreOp::Store,
+                    clear_color,
+                }],
+                depth_stencil_attachment: None,
+            });
+
+            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_bind_group(0, &self.view_uniform_bind_group, &[]);
+
+            for shapes_entry in &self.shapes {
+                if let Some(shape_data_cell) = shapes_entry.upgrade() {
+                    let mut shape_data = shape_data_cell.borrow_mut();
+                    let instance_transforms_buffer = self
+                        .device
+                        .create_buffer_mapped(
+                            shape_data.instance_transforms.len(),
+                            BufferUsage::VERTEX,
+                        )
+                        .fill_from_slice(&shape_data.instance_transforms);
+
+                    let instance_colors_buffer = self
+                        .device
+                        .create_buffer_mapped(shape_data.instance_colors.len(), BufferUsage::VERTEX)
+                        .fill_from_slice(&shape_data.instance_colors);
+
+                    render_pass.set_vertex_buffers(
+                        0,
+                        &[
+                            (&shape_data.vertex_buffer, 0),
+                            (&instance_colors_buffer, 0),
+                            (&instance_transforms_buffer, 0),
+                        ],
+                    );
+                    render_pass.set_index_buffer(&shape_data.index_buffer, 0);
+
+                    let num_instances = shape_data.instance_transforms.len() as u32;
+                    render_pass.draw_indexed(0..shape_data.num_indices, 0, 0..num_instances);
+
+                    shape_data.instance_transforms.clear();
+                    shape_data.instance_colors.clear();
+                }
+            }
+        }
+        self.queue.submit(&[encoder.finish()]);
     }
 }

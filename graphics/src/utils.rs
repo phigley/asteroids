@@ -1,7 +1,8 @@
+use crate::vertex::Vertex;
 use std::f32;
 
-pub fn build_circle(radius: f32, num_vertices: usize) -> (Vec<super::Vertex>, Vec<u16>) {
-    let origin = super::Vertex { pos: [0.0, 0.0] };
+pub fn build_circle(radius: f32, num_vertices: usize) -> (Vec<Vertex>, Vec<u16>) {
+    let origin = Vertex::new(0.0, 0.0);
 
     if num_vertices == 0 || radius <= f32::EPSILON {
         (vec![origin], vec![0])
@@ -19,14 +20,14 @@ pub fn build_circle(radius: f32, num_vertices: usize) -> (Vec<super::Vertex>, Ve
 
         let mut current_angle = angle_increment;
 
-        verts.push(super::Vertex { pos: [radius, 0.0] });
+        verts.push(Vertex::new(radius, 0.0));
 
         // build the first n-1 wedges.
         for i in 1..num_vertices {
             let x = radius * f32::cos(current_angle);
             let y = radius * f32::sin(current_angle);
 
-            verts.push(super::Vertex { pos: [x, y] });
+            verts.push(Vertex::new(x, y));
 
             indices.push(0);
             indices.push(i as u16);
@@ -47,7 +48,7 @@ pub fn build_circle(radius: f32, num_vertices: usize) -> (Vec<super::Vertex>, Ve
 #[cfg(test)]
 mod tests {
 
-    use super::super::Vertex;
+    use super::super::vertex::Vertex;
     use std::f32;
 
     macro_rules! assert_nearly_eq {
@@ -62,8 +63,8 @@ mod tests {
     }
 
     fn vertex_distance(v0: Vertex, v1: Vertex) -> f32 {
-        let dx = v0.pos[0] - v1.pos[0];
-        let dy = v0.pos[1] - v1.pos[1];
+        let dx = v0.position.x - v1.position.x;
+        let dy = v0.position.y - v1.position.y;
 
         f32::sqrt(dx * dx + dy * dy)
     }
@@ -96,9 +97,9 @@ mod tests {
                     "assertion failed: {} > 0, for indices {} (= {:?}) and {} (= {:?})",
                     dist,
                     i,
-                    verts[i].pos,
+                    verts[i].position,
                     j,
-                    verts[j].pos
+                    verts[j].position
                 );
             }
         }

@@ -1,21 +1,52 @@
-use gfx;
-use gfx::traits::FactoryExt;
-use gfx_device_gl;
+use std::cell::RefCell;
+use std::fmt;
+use std::rc::Rc;
+use std::vec::Vec;
 
-#[derive(Debug, Clone)]
+use crate::color::Color;
+use crate::model_transform::ModelTransform;
+use crate::vertex::Vertex;
+use wgpu::{Buffer, BufferUsage, Device};
+
+#[derive(Clone)]
 pub struct Shape {
-    pub vbuf: gfx::handle::Buffer<gfx_device_gl::Resources, super::Vertex>,
-    pub slice: gfx::Slice<gfx_device_gl::Resources>,
+    pub(crate) data: Rc<RefCell<ShapeData>>,
+    pub name: &'static str,
 }
 
-impl Shape {
-    pub fn new(
-        vertex_data: &[super::Vertex],
-        indices: &[u16],
-        factory: &mut gfx_device_gl::Factory,
-    ) -> Shape {
-        let (vbuf, slice) = factory.create_vertex_buffer_with_slice(vertex_data, indices);
+impl fmt::Debug for Shape {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Shape").field("name", &self.name).finish()
+    }
+}
 
-        Shape { vbuf, slice }
+pub(crate) struct ShapeData {
+    pub(crate) instance_transforms: Vec<ModelTransform>,
+    pub(crate) instance_colors: Vec<Color>,
+
+    pub(crate) vertex_buffer: Buffer,
+    pub(crate) index_buffer: Buffer,
+    pub(crate) num_indices: u32,
+}
+
+impl ShapeData {
+    pub(crate) fn new(device: &mut Device, vertex_data: &[Vertex], indices: &[u16]) -> Self {
+        let vertex_buffer = device
+            .create_buffer_mapped(vertex_data.len(), BufferUsage::VERTEX)
+            .fill_from_slice(vertex_data);
+
+        let index_buffer = device
+            .create_buffer_mapped(indices.len(), BufferUsage::INDEX)
+            .fill_from_slice(indices);
+        let num_indices = indices.len() as u32;
+
+        Self {
+            instance_transforms: Vec::new(),
+            instance_colors: Vec::new(),
+
+            vertex_buffer,
+            index_buffer,
+            num_indices,
+        }
     }
 }
