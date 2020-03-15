@@ -19,7 +19,7 @@ use crate::vertex::Vertex;
 
 pub trait ScreenCallbacks {
     fn handle_event(&mut self, _screen: &mut Screen, _event: events::Event) {}
-    fn update(&mut self, _screen: &mut Screen, _frame_delta: f32) {}
+    fn update(&mut self, _screen: &mut Screen, _frame_delta: Duration) {}
     fn render(&self, _screen_render: ScreenRender) {}
 }
 
@@ -144,7 +144,7 @@ impl Screen {
             }
             Event::MainEventsCleared => {
                 let current_time = Instant::now();
-                let frame_delta = (current_time - self.last_frame_time).as_secs_f32();
+                let frame_delta = current_time - self.last_frame_time;
                 self.next_frame_time = current_time + Duration::from_millis(33);
 
                 callbacks.update(self, frame_delta);
