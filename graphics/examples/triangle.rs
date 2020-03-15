@@ -1,5 +1,6 @@
 use graphics::{color, model, screen};
 
+use anyhow::Result;
 use nalgebra::{Point2, Similarity2};
 
 struct App {
@@ -12,13 +13,10 @@ impl screen::ScreenCallbacks for App {
     }
 }
 
-fn main() {
+fn main() -> Result<()> {
     let clear_color = color::Color::new(0.1, 0.2, 0.3, 1.0);
 
-    let mut runner = match screen::ScreenRunner::create(800.0, 600.0, "Triangle", clear_color) {
-        Err(create_error) => panic!(create_error.to_string()),
-        Ok(created_screen) => created_screen,
-    };
+    let mut runner = screen::ScreenRunner::create(800.0, 600.0, "Triangle", clear_color)?;
 
     let translation: Similarity2<f32> = Similarity2::identity();
 

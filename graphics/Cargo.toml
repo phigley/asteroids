@@ -13,6 +13,7 @@ nalgebra = "0.20"
 [dev-dependencies]
 specs = "0.16"
 specs-derive = "0.4"
+anyhow = "1.0"
 
 [build-dependencies]
 shaderc = "0.6"

@@ -8,7 +8,7 @@ pub enum ScreenCreateError {
     #[error("Failed to create adapter")]
     AdapterCreateFailure,
 
-    #[error("Pipeline create failure for {file_name}.[vert,frag] : {source:?}")]
+    #[error("Pipeline create failure for {file_name}.")]
     PipelineFailure {
         source: std::io::Error,
         file_name: &'static str,
