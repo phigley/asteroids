@@ -25,7 +25,7 @@ pub fn build_circle(radius: f32, num_vertices: usize) -> (Vec<Vertex>, Vec<u16>)
         // build the first n-1 wedges.
         for i in 1..num_vertices {
             let x = radius * f32::cos(current_angle);
-            let y = radius * f32::sin(current_angle);
+            let y = -radius * f32::sin(current_angle);
 
             verts.push(Vertex::new(x, y));
 

@@ -119,11 +119,11 @@ impl Screen {
             .create_shape(vertex_data.as_slice(), &indices, name)
     }
 
-    pub fn create_circle(&mut self, radius: f32, vertices: usize) -> Shape {
+    pub fn create_circle(&mut self, radius: f32, vertices: usize, name: &'static str) -> Shape {
         let (vertex_data, indices) = utils::build_circle(radius, vertices);
 
         self.device
-            .create_shape(vertex_data.as_slice(), &indices, "circle")
+            .create_shape(vertex_data.as_slice(), &indices, name)
     }
 
     pub fn handle_event<C: 'static + ScreenCallbacks, T>(
