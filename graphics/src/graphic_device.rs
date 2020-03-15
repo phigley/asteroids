@@ -239,6 +239,7 @@ impl GraphicDevice {
             for shapes_entry in &self.shapes {
                 if let Some(shape_data_cell) = shapes_entry.upgrade() {
                     let mut shape_data = shape_data_cell.borrow_mut();
+
                     let instance_transforms_buffer = self
                         .device
                         .create_buffer_mapped(

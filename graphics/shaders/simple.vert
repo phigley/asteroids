@@ -14,5 +14,4 @@ uniform ViewUniforms{
 void main(){
 	v_color=a_color;
 	gl_Position=u_view_projection*a_model*vec4(a_pos2D,0.,1.);
-	
 }
