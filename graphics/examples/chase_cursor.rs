@@ -1,96 +1,137 @@
-use graphics::{color, events, model, screen, FrameTimer};
+use graphics::{color, events, model, screen};
 
-use nalgebra::{Similarity2, Vector2};
+use anyhow::Result;
+use nalgebra::{Point2, Similarity2, Vector2};
+use std::time::Duration;
+use std::vec::Vec;
 
-fn main() {
-    let mut screen = match screen::Screen::create(800.0, 600.0, "Chase Cursor") {
-        Err(create_error) => panic!(create_error.to_string()),
-        Ok(created_screen) => created_screen,
-    };
+struct App {
+    chase_model: model::Model,
+    follow_model: model::Model,
+    fixed_model: model::Model,
 
-    let shape = screen.create_circle(0.02, 64);
+    follow_scale: f32,
+    chase_scale: f32,
 
-    let fixed_scale = 1.5;
-    let chase_scale = 1.0;
-    let follow_scale = 0.5;
+    catchup_percent: f32,
+    catchup_delay: f32,
 
-    let chase_color = color::Color::new(1.0, 1.0, 1.0, 0.5);
-    let mut chase_model =
-        model::Model::new(&shape, chase_color, Similarity2::from_scaling(chase_scale));
+    current_color: usize,
+    colors: Vec<color::Color>,
 
-    let mut frame_timer = FrameTimer::new();
+    previous_mouse_pos: Point2<f32>,
+}
 
-    let follow_color = color::Color::new(1.0, 1.0, 0.0, 0.5);
-    let mut follow_model = model::Model::new(
-        &shape,
-        follow_color,
-        Similarity2::from_scaling(follow_scale),
-    );
+impl App {
+    fn new(screen: &mut screen::Screen) -> Self {
+        let shape = screen.create_circle(0.02, 64, "Circle");
 
-    let colors = [
-        color::Color::new(1.0, 0.0, 0.0, 1.0),
-        color::Color::new(0.0, 1.0, 0.0, 1.0),
-        color::Color::new(0.0, 0.0, 1.0, 1.0),
-    ];
+        let fixed_scale = 1.5;
+        let chase_scale = 1.0;
+        let follow_scale = 0.5;
+        let chase_color = color::Color::new(1.0, 1.0, 1.0, 0.5);
+        let chase_model = model::Model::new(
+            shape.clone(),
+            chase_color,
+            Similarity2::from_scaling(chase_scale),
+        );
+        let follow_color = color::Color::new(1.0, 1.0, 0.0, 0.5);
+        let follow_model = model::Model::new(
+            shape.clone(),
+            follow_color,
+            Similarity2::from_scaling(follow_scale),
+        );
+        let colors = vec![
+            color::Color::new(1.0, 0.0, 0.0, 1.0),
+            color::Color::new(0.0, 1.0, 0.0, 1.0),
+            color::Color::new(0.0, 0.0, 1.0, 1.0),
+        ];
 
-    let mut current_color = 0;
+        let fixed_translation =
+            Similarity2::new(Vector2::new(0.25f32, 0.25f32), 0.0f32, fixed_scale);
+        let fixed_model = model::Model::new(shape, colors[0], fixed_translation);
+        // catchup_percent of the distance is remaining after catchup_delay time has passed.
+        let catchup_percent = 0.05f32;
+        let catchup_delay = 1.0f32;
 
-    let fixed_translation = Similarity2::new(Vector2::new(0.25f32, 0.25f32), 0.0f32, fixed_scale);
-    let mut fixed_model = model::Model::new(&shape, colors[current_color], fixed_translation);
+        let previous_mouse_pos = screen.get_mouse_pos();
 
-    let clear_color = color::Color::new(0.1, 0.2, 0.3, 1.0);
+        Self {
+            chase_model,
+            follow_model,
+            fixed_model,
 
-    // catchup_percent of the distance is remaining after catchup_delay time has passed.
-    let catchup_percent = 0.05f32;
-    let catchup_delay = 1.0f32;
+            follow_scale,
+            chase_scale,
 
-    let mut previous_mouse_pos = screen.get_mouse_pos();
+            catchup_percent,
+            catchup_delay,
 
-    let mut should_exit = false;
-    while !should_exit {
-        screen.clear(clear_color);
-        screen.draw_model(&fixed_model);
-        screen.draw_model(&chase_model);
-        screen.draw_model(&follow_model);
-        screen.flush();
+            current_color: 0,
+            colors,
 
-        let frame_time = frame_timer.update(16, 0.1);
+            previous_mouse_pos,
+        }
+    }
+}
 
-        screen.poll_events(|event| match event {
-            events::Event::Exit => should_exit = true,
+impl screen::ScreenCallbacks for App {
+    fn handle_event(&mut self, _screen: &mut screen::Screen, event: events::Event) {
+        match event {
             events::Event::Resize { mouse_pos } => {
-                follow_model.transform = Similarity2::new(mouse_pos.coords, 0.0f32, follow_scale);
+                self.follow_model.transform =
+                    Similarity2::new(mouse_pos.coords, 0.0f32, self.follow_scale);
             }
             events::Event::MouseMove { pos } => {
-                follow_model.transform = Similarity2::new(pos.coords, 0.0f32, follow_scale);
+                self.follow_model.transform =
+                    Similarity2::new(pos.coords, 0.0f32, self.follow_scale);
             }
             events::Event::MouseLMB { down } => {
                 if !down {
-                    current_color += 1;
-                    if current_color >= colors.len() {
-                        current_color = 0;
+                    self.current_color += 1;
+                    if self.current_color >= self.colors.len() {
+                        self.current_color = 0;
                     }
 
-                    fixed_model.color = colors[current_color];
+                    self.fixed_model.color = self.colors[self.current_color];
                 }
             }
             _ => (),
-        });
+        }
+    }
 
+    fn update(&mut self, screen: &mut screen::Screen, frame_delta: Duration) {
         let current_mouse_pos = screen.get_mouse_pos();
 
-        let full_delta_pos = current_mouse_pos - previous_mouse_pos;
+        let full_delta_pos = current_mouse_pos - self.previous_mouse_pos;
 
         let interp_percent = if full_delta_pos.norm() > 1e-8f32 {
-            1.0 - catchup_percent.powf(frame_time / catchup_delay)
+            1.0 - self
+                .catchup_percent
+                .powf(frame_delta.as_secs_f32() / self.catchup_delay)
         } else {
             1.0f32
         };
 
-        let new_chase_pos = previous_mouse_pos + full_delta_pos * interp_percent;
+        let new_chase_pos = self.previous_mouse_pos + full_delta_pos * interp_percent;
 
-        chase_model.transform = Similarity2::new(new_chase_pos.coords, 0.0f32, chase_scale);
+        self.chase_model.transform =
+            Similarity2::new(new_chase_pos.coords, 0.0f32, self.chase_scale);
 
-        previous_mouse_pos = new_chase_pos;
+        self.previous_mouse_pos = new_chase_pos;
     }
+
+    fn render(&self, mut screen_render: screen::ScreenRender) {
+        screen_render.draw_model(&self.fixed_model);
+        screen_render.draw_model(&self.chase_model);
+        screen_render.draw_model(&self.follow_model);
+    }
+}
+
+fn main() -> Result<()> {
+    let clear_color = color::Color::new(0.1, 0.2, 0.3, 1.0);
+    let mut runner = screen::ScreenRunner::create(800.0, 600.0, "Chase Cursor", clear_color)?;
+
+    let app = App::new(&mut runner.screen);
+    runner.run(app);
 }

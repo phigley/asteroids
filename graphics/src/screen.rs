@@ -1,7 +1,7 @@
 use nalgebra::{Matrix4, Point2, Similarity2};
 use std::time::{Duration, Instant};
 use winit::{
-    dpi::LogicalSize,
+    dpi::{LogicalSize, PhysicalSize},
     event::{ElementState, Event, KeyboardInput, MouseButton, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::{Window, WindowBuilder},
@@ -56,8 +56,7 @@ pub struct Screen {
     device: GraphicDevice,
     cursor: Cursor,
 
-    pending_resize: bool,
-    logical_size: LogicalSize<f64>,
+    physical_size: PhysicalSize<u32>,
     dpi_factor: f64,
 
     last_frame_time: Instant,
@@ -78,7 +77,7 @@ impl Screen {
             .build(event_loop)
             .map_err(ScreenCreateError::WindowCreateFailure)?;
 
-        let (device, logical_size, dpi_factor) = GraphicDevice::create(&window)?;
+        let (device, physical_size, dpi_factor) = GraphicDevice::create(&window)?;
 
         let wgpu_clear_color = wgpu::Color {
             r: clear_color.r as f64,
@@ -91,9 +90,8 @@ impl Screen {
             window,
             clear_color: wgpu_clear_color,
             device,
-            cursor: Cursor::new(width, height),
-            pending_resize: false,
-            logical_size,
+            cursor: Cursor::new(physical_size),
+            physical_size,
             dpi_factor,
 
             last_frame_time: Instant::now(),
@@ -143,27 +141,19 @@ impl Screen {
                 }
             }
             Event::MainEventsCleared => {
-                let current_time = Instant::now();
-                let frame_delta = current_time - self.last_frame_time;
-                self.next_frame_time = current_time + Duration::from_millis(33);
+                let frame_delta = self.last_frame_time.elapsed();
+                self.last_frame_time = Instant::now();
+                self.next_frame_time = self.last_frame_time + Duration::from_millis(16);
 
                 callbacks.update(self, frame_delta);
 
-                self.trigger_possible_resize(callbacks);
-
-                callbacks.render(ScreenRender {
-                    device: &mut self.device,
-                });
-
-                self.device.render_frame(self.clear_color);
+                self.window.request_redraw();
 
                 *control_flow = ControlFlow::WaitUntil(self.next_frame_time)
             }
 
             Event::RedrawRequested(window_id) => {
                 if window_id == self.window.id() {
-                    self.trigger_possible_resize(callbacks);
-
                     callbacks.render(ScreenRender {
                         device: &mut self.device,
                     });
@@ -194,14 +184,11 @@ impl Screen {
                     },
                 ..
             }
-            | WindowEvent::CloseRequested => {
-                callbacks.handle_event(self, events::Event::Exit);
-                ControlFlow::Exit
-            }
+            | WindowEvent::CloseRequested => ControlFlow::Exit,
 
             WindowEvent::Resized(physical_size) => {
-                self.pending_resize = true;
-                self.logical_size = physical_size.to_logical(self.dpi_factor);
+                self.physical_size = *physical_size;
+                self.handle_resize(callbacks);
                 ControlFlow::WaitUntil(self.next_frame_time)
             }
 
@@ -209,8 +196,9 @@ impl Screen {
                 scale_factor,
                 new_inner_size,
             } => {
-                self.pending_resize = true;
-                self.logical_size = new_inner_size.to_logical(*scale_factor);
+                self.physical_size = **new_inner_size;
+                self.dpi_factor = *scale_factor;
+                self.handle_resize(callbacks);
                 ControlFlow::WaitUntil(self.next_frame_time)
             }
 
@@ -275,18 +263,12 @@ impl Screen {
         }
     }
 
-    fn trigger_possible_resize<C: ScreenCallbacks>(&mut self, callbacks: &mut C) {
-        if self.pending_resize {
-            self.pending_resize = false;
+    fn handle_resize<C: ScreenCallbacks>(&mut self, callbacks: &mut C) {
+        self.device.set_window_size(self.physical_size);
+        self.cursor.set_window_size(self.physical_size);
 
-            self.device
-                .set_window_size(&self.logical_size, self.dpi_factor);
-            self.cursor
-                .set_window_size(self.logical_size.width, self.logical_size.height);
-
-            let mouse_pos = self.cursor.get_mouse_pos();
-            callbacks.handle_event(self, events::Event::Resize { mouse_pos });
-        }
+        let mouse_pos = self.cursor.get_mouse_pos();
+        callbacks.handle_event(self, events::Event::Resize { mouse_pos });
     }
 }
 

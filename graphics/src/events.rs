@@ -91,9 +91,6 @@ pub enum Key {
 
 /// Possible event types that can occur
 pub enum Event {
-    /// Exit has been requested, ie. window was closed.
-    Exit,
-
     /// A screen resize has occured.
     /// mouse_pos is the new mouse position, assuming that it stayed at the same pixel location.
     Resize { mouse_pos: Point2<f32> },

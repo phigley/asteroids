@@ -1,4 +1,5 @@
 use nalgebra::Point2;
+use winit::dpi::PhysicalSize;
 
 pub struct Cursor {
     on_screen: bool,
@@ -7,11 +8,11 @@ pub struct Cursor {
 }
 
 impl Cursor {
-    pub fn new(screen_width: f64, screen_height: f64) -> Cursor {
+    pub fn new(physical_size: PhysicalSize<u32>) -> Cursor {
         Cursor {
             on_screen: false,
             pos: Point2::new(0.0, 0.0),
-            screen_dims: (screen_width as f32, screen_height as f32),
+            screen_dims: (physical_size.width as f32, physical_size.height as f32),
         }
     }
 
@@ -23,19 +24,22 @@ impl Cursor {
         self.pos
     }
 
-    pub fn set_window_size(&mut self, width: f64, height: f64) {
+    pub fn set_window_size(&mut self, physical_size: PhysicalSize<u32>) {
+        // Determine our original position as percent of screen.
         let (x_pixel, y_pixel) = pos_to_pixel(self.pos, self.screen_dims.0, self.screen_dims.1);
 
         let x_pixel_percent = x_pixel / (self.screen_dims.0 as f32);
         let y_pixel_percent = y_pixel / (self.screen_dims.1 as f32);
 
-        self.screen_dims = (width as f32, height as f32);
+        // Update our screen dims.
+        self.screen_dims = (physical_size.width as f32, physical_size.height as f32);
 
+        // Set our position to match the percent of screen.
         self.pos = pixel_to_pos(
-            x_pixel_percent * (width as f32),
-            y_pixel_percent * (height as f32),
-            width as f32,
-            height as f32,
+            x_pixel_percent * self.screen_dims.0,
+            y_pixel_percent * self.screen_dims.1,
+            self.screen_dims.0,
+            self.screen_dims.1,
         );
     }
 
@@ -67,7 +71,7 @@ fn pixel_to_pos(x_pixel: f32, y_pixel: f32, width: f32, height: f32) -> Point2<f
     let divisor = f32::min(half_width, half_height);
 
     let x = (x_pixel - half_width) / divisor;
-    let y = (half_height - y_pixel) / divisor;
+    let y = (y_pixel - half_height) / divisor;
 
     Point2::new(x, y)
 }

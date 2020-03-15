@@ -1,5 +1,5 @@
 use nalgebra::{Matrix4, Orthographic3};
-use winit::dpi::LogicalSize;
+use winit::dpi::PhysicalSize;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -8,9 +8,21 @@ pub struct ViewUniforms {
 }
 
 impl ViewUniforms {
-    pub fn from_logical(logical_size: &LogicalSize<f64>) -> Self {
-        let width = logical_size.width;
-        let height = logical_size.height;
+    pub fn layout_desc<'a>() -> wgpu::BindGroupLayoutDescriptor<'a> {
+        wgpu::BindGroupLayoutDescriptor {
+            bindings: &[wgpu::BindGroupLayoutBinding {
+                binding: 0,
+                visibility: wgpu::ShaderStage::VERTEX,
+                ty: wgpu::BindingType::UniformBuffer { dynamic: false },
+            }],
+        }
+    }
+}
+
+impl From<PhysicalSize<u32>> for ViewUniforms {
+    fn from(size: PhysicalSize<u32>) -> Self {
+        let width = size.width as f32;
+        let height = size.height as f32;
 
         let initial_projection: Orthographic3<f32> = if width >= height {
             let view_ratio = (width / height) as f32;
@@ -24,16 +36,6 @@ impl ViewUniforms {
 
         Self {
             projection: initial_projection_matrix,
-        }
-    }
-
-    pub fn layout_desc<'a>() -> wgpu::BindGroupLayoutDescriptor<'a> {
-        wgpu::BindGroupLayoutDescriptor {
-            bindings: &[wgpu::BindGroupLayoutBinding {
-                binding: 0,
-                visibility: wgpu::ShaderStage::VERTEX,
-                ty: wgpu::BindingType::UniformBuffer { dynamic: false },
-            }],
         }
     }
 }

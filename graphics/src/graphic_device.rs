@@ -7,7 +7,7 @@ use wgpu::{
     BindGroup, Buffer, BufferAddress, BufferUsage, Device, Queue, RenderPipeline, Surface,
     SwapChain, SwapChainDescriptor,
 };
-use winit::{dpi::LogicalSize, window::Window};
+use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::color::Color;
 use crate::errors::ScreenCreateError;
@@ -33,7 +33,7 @@ pub struct GraphicDevice {
 impl GraphicDevice {
     pub fn create(
         window: &Window,
-    ) -> Result<(GraphicDevice, LogicalSize<f64>, f64), ScreenCreateError> {
+    ) -> Result<(GraphicDevice, PhysicalSize<u32>, f64), ScreenCreateError> {
         let physical_size = window.inner_size();
 
         let surface = wgpu::Surface::create(window);
@@ -60,9 +60,8 @@ impl GraphicDevice {
         let swap_chain = device.create_swap_chain(&surface, &sc_desc);
 
         let dpi_factor = window.scale_factor();
-        let logical_size = physical_size.to_logical(dpi_factor);
 
-        let view_uniforms = ViewUniforms::from_logical(&logical_size);
+        let view_uniforms = ViewUniforms::from(physical_size);
         let view_uniform_buffer = device
             .create_buffer_mapped(1, BufferUsage::UNIFORM | BufferUsage::COPY_DST)
             .fill_from_slice(&[view_uniforms]);
@@ -153,16 +152,15 @@ impl GraphicDevice {
             shapes: Vec::new(),
         };
 
-        Ok((device, logical_size, dpi_factor))
+        Ok((device, physical_size, dpi_factor))
     }
 
-    pub fn set_window_size(&mut self, logical_size: &LogicalSize<f64>, dpi_factor: f64) {
-        let new_size = logical_size.to_physical(dpi_factor);
+    pub fn set_window_size(&mut self, new_size: PhysicalSize<u32>) {
         self.sc_desc.width = new_size.width;
         self.sc_desc.height = new_size.height;
         self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
 
-        let view_uniforms = ViewUniforms::from_logical(logical_size);
+        let view_uniforms = ViewUniforms::from(new_size);
 
         let mut encoder = self
             .device
