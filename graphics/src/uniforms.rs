@@ -23,7 +23,7 @@ impl ViewUniforms {
         let initial_projection_matrix: Matrix4<f32> = initial_projection.to_homogeneous();
 
         Self {
-            projection: initial_projection_matrix.into(),
+            projection: initial_projection_matrix,
         }
     }
 
