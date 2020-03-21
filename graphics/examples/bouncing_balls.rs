@@ -1,113 +1,135 @@
 #[macro_use]
 extern crate specs_derive;
 
-use graphics::color::Color;
-use graphics::events::{Event, Key};
-use graphics::screen::Screen;
-use graphics::FrameTimer;
-
+use anyhow::Result;
 use nalgebra::{Point2, Similarity2, Translation2, UnitComplex, Vector2};
-
 use specs::{
-    Builder, Component, DispatcherBuilder, Join, Read, System, VecStorage, World, WriteStorage,
+    Builder, Component, Dispatcher, DispatcherBuilder, Join, Read, System, VecStorage, World,
+    WorldExt, WriteStorage,
+};
+use std::f32;
+use std::time::Duration;
+
+use graphics::{
+    color::Color,
+    events::{Event, Key},
+    screen::{Screen, ScreenCallbacks, ScreenRender, ScreenRunner},
+    shape::Shape,
 };
 
-use specs::prelude::*;
-
-use std::f32;
-
-fn main() {
-    let mut screen = match Screen::create(800.0, 600.0, "Bouncing Balls") {
-        Err(create_error) => panic!("{:?}", create_error),
-        Ok(created_screen) => created_screen,
-    };
-
-    let ball_shape = screen.create_circle(0.02, 64);
-    let ball_color = Color::new(1.0, 1.0, 1.0, 1.0);
-
+fn main() -> Result<()> {
     let clear_color = Color::new(0.2, 0.2, 0.5, 1.0);
+    let mut runner = ScreenRunner::create(800.0, 600.0, "Bouncing Balls", clear_color)?;
 
-    let mouse_averge_factor = 0.05f32;
-    let mouse_average_delay = 0.5f32;
+    let dispatcher = Box::new(
+        DispatcherBuilder::new()
+            .with(ApplyPhysics::new(), "apply_physics", &[])
+            .build(),
+    );
 
-    let mut world = World::new();
-    world.register::<Position>();
-    world.register::<Velocity>();
-    world.register::<BallRenderable>();
+    let app = App::new(&mut runner.screen, dispatcher);
 
-    world.insert(FrameTime(0.0));
+    runner.run(app);
+}
 
-    let mut frame_timer = FrameTimer::new();
+struct App<'a, 'b> {
+    ball_shape: Shape,
+    ball_color: Color,
+    world: World,
+    dispatcher: Box<Dispatcher<'a, 'b>>,
+    pending_ball: Option<PendingBall>,
 
-    let mut dispatcher = DispatcherBuilder::new()
-        .with(ApplyPhysics::new(), "apply_physics", &[])
-        .build();
+    current_pos: Point2<f32>,
 
-    let mut pending_ball: Option<PendingBall> = None;
+    mouse_averge_factor: f32,
+    mouse_average_delay: f32,
+}
 
-    let mut current_pos = Point2::new(0.0, 0.0);
+impl<'a, 'b> App<'a, 'b> {
+    fn new(screen: &mut Screen, dispatcher: Box<Dispatcher<'a, 'b>>) -> Self {
+        let ball_shape = screen.create_circle(0.02, 64, "Ball");
+        let ball_color = Color::new(1.0, 1.0, 1.0, 1.0);
+        let mut world = World::new();
+        world.register::<Position>();
+        world.register::<Velocity>();
+        world.register::<BallRenderable>();
+        world.insert(FrameTime(0.0));
 
-    let mut should_exit = false;
-    while !should_exit {
-        screen.clear(clear_color);
+        Self {
+            ball_shape,
+            ball_color,
 
-        let frame_delta = frame_timer.update(10, 0.1);
+            world,
 
-        *world.write_resource::<FrameTime>() = FrameTime(frame_delta);
+            dispatcher,
+            pending_ball: None,
+            current_pos: Point2::new(0.0, 0.0),
 
-        screen.poll_events(|event| match event {
-            Event::Exit => should_exit = true,
+            mouse_averge_factor: 0.05f32,
+            mouse_average_delay: 0.5f32,
+        }
+    }
+}
 
+impl ScreenCallbacks for App<'_, '_> {
+    fn handle_event(&mut self, _screen: &mut Screen, event: Event) {
+        match event {
             Event::KeyPress {
                 key: Key::R,
                 down: true,
             } => {
-                world.delete_all();
+                self.world.delete_all();
             }
-
             Event::MouseLMB { down } => {
                 if down {
-                    pending_ball = Some(PendingBall::new(current_pos));
+                    self.pending_ball = Some(PendingBall::new(self.current_pos));
                 } else {
-                    if let Some(ref pending_ball) = pending_ball {
-                        world
+                    if let Some(ref pending_ball) = self.pending_ball {
+                        self.world
                             .create_entity()
                             .with(Position(pending_ball.pos))
                             .with(Velocity(pending_ball.vel))
-                            .with(BallRenderable(ball_color))
+                            .with(BallRenderable(self.ball_color))
                             .build();
                     }
 
-                    pending_ball = None;
+                    self.pending_ball = None;
                 }
             }
 
             Event::MouseMove { pos } => {
-                if let Some(ref mut pending_ball) = pending_ball {
+                if let Some(ref mut pending_ball) = self.pending_ball {
+                    let system_data: Read<FrameTime> = self.world.system_data();
+                    let frame_delta = system_data.0;
                     if frame_delta > 0.0 {
-                        let delta_mouse_pos = pos - current_pos;
+                        let delta_mouse_pos = pos - self.current_pos;
                         let mouse_vel = delta_mouse_pos / frame_delta;
 
-                        let frame_decay =
-                            mouse_averge_factor.powf(frame_delta / mouse_average_delay);
+                        let frame_decay = self
+                            .mouse_averge_factor
+                            .powf(frame_delta / self.mouse_average_delay);
 
                         pending_ball.vel *= frame_decay;
                         pending_ball.vel += mouse_vel * (1.0f32 - frame_decay);
-
-                        pending_ball.pos = current_pos;
+                        pending_ball.pos = self.current_pos;
                     }
                 }
 
-                current_pos = pos;
+                self.current_pos = pos;
             }
             _ => (),
-        });
+        }
+    }
 
-        dispatcher.dispatch(&world);
+    fn update(&mut self, _screen: &mut Screen, frame_delta: Duration) {
+        *self.world.write_resource::<FrameTime>() = FrameTime(frame_delta.as_secs_f32());
+        self.dispatcher.dispatch(&self.world);
+    }
 
+    fn render(&self, mut screen_render: ScreenRender) {
         {
-            let ball_renderables = world.read_storage::<BallRenderable>();
-            let positions = world.read_storage::<Position>();
+            let ball_renderables = self.world.read_storage::<BallRenderable>();
+            let positions = self.world.read_storage::<Position>();
 
             for (&BallRenderable(ref color), &Position(ref pos)) in
                 (&ball_renderables, &positions).join()
@@ -117,20 +139,18 @@ fn main() {
                     UnitComplex::identity(),
                     1.0,
                 );
-                screen.draw_shape(&transform, *color, &ball_shape);
+                screen_render.draw_shape(&transform, *color, &self.ball_shape);
             }
         }
 
-        if let Some(ref pending_ball) = pending_ball {
+        if let Some(ref pending_ball) = self.pending_ball {
             let transform = Similarity2::from_parts(
                 Translation2::from(pending_ball.pos.coords),
                 UnitComplex::identity(),
                 1.0,
             );
-            screen.draw_shape(&transform, ball_color, &ball_shape);
+            screen_render.draw_shape(&transform, self.ball_color, &self.ball_shape);
         }
-
-        screen.flush();
     }
 }
 
@@ -154,7 +174,7 @@ struct ApplyPhysics {
 
 impl ApplyPhysics {
     fn new() -> ApplyPhysics {
-        let acceleration = Vector2::new(0.0, -0.98);
+        let acceleration = Vector2::new(0.0, 0.98);
         let restitution = 0.99f32;
 
         let max_velocity = 3.0f32;
