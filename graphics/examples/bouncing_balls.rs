@@ -21,13 +21,7 @@ fn main() -> Result<()> {
     let clear_color = Color::new(0.2, 0.2, 0.5, 1.0);
     let mut runner = ScreenRunner::create(800.0, 600.0, "Bouncing Balls", clear_color)?;
 
-    let dispatcher = Box::new(
-        DispatcherBuilder::new()
-            .with(ApplyPhysics::new(), "apply_physics", &[])
-            .build(),
-    );
-
-    let app = App::new(&mut runner.screen, dispatcher);
+    let app = App::new(&mut runner.screen);
 
     runner.run(app);
 }
@@ -45,8 +39,14 @@ struct App<'a, 'b> {
     mouse_average_delay: f32,
 }
 
-impl<'a, 'b> App<'a, 'b> {
-    fn new(screen: &mut Screen, dispatcher: Box<Dispatcher<'a, 'b>>) -> Self {
+impl App<'_, '_> {
+    fn new(screen: &mut Screen) -> Self {
+        let dispatcher = Box::new(
+            DispatcherBuilder::new()
+                .with(ApplyPhysics::new(), "apply_physics", &[])
+                .build(),
+        );
+
         let ball_shape = screen.create_circle(0.02, 64, "Ball");
         let ball_color = Color::new(1.0, 1.0, 1.0, 1.0);
         let mut world = World::new();
