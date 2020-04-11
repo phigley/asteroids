@@ -1,6 +1,5 @@
 use nalgebra::Matrix4;
-use std::cell::RefCell;
-use std::rc::{Rc, Weak};
+use std::sync::{Arc, Mutex, Weak};
 use std::vec::Vec;
 use wgpu;
 use wgpu::{
@@ -27,7 +26,7 @@ pub struct GraphicDevice {
     view_uniform_buffer: Buffer,
     view_uniform_bind_group: BindGroup,
 
-    shapes: Vec<Weak<RefCell<ShapeData>>>,
+    shapes: Vec<Weak<Mutex<ShapeData>>>,
 }
 
 impl GraphicDevice {
@@ -188,19 +187,19 @@ impl GraphicDevice {
         indices: &[u16],
         name: &'static str,
     ) -> Shape {
-        let data = Rc::new(RefCell::new(ShapeData::new(
+        let data = Arc::new(Mutex::new(ShapeData::new(
             &mut self.device,
             vertex_data,
             indices,
         )));
 
-        self.shapes.push(Rc::downgrade(&data));
+        self.shapes.push(Arc::downgrade(&data));
 
         Shape { data, name }
     }
 
     pub fn draw_shape(&mut self, transform: Matrix4<f32>, color: Color, shape: &Shape) {
-        let mut shape_data = shape.data.borrow_mut();
+        let mut shape_data = shape.data.lock().unwrap();
 
         // Add this draw request to our instances.
         shape_data
@@ -236,7 +235,7 @@ impl GraphicDevice {
 
             for shapes_entry in &self.shapes {
                 if let Some(shape_data_cell) = shapes_entry.upgrade() {
-                    let mut shape_data = shape_data_cell.borrow_mut();
+                    let mut shape_data = shape_data_cell.lock().unwrap();
 
                     let instance_transforms_buffer = self
                         .device

@@ -1,18 +1,11 @@
-use specs::{Component, Join, ReadStorage, System, VecStorage, Write, WriteStorage};
-
 use crate::na;
 use crate::na::{Isometry2, Similarity2, Translation2, Vector2};
-
-use graphics::color::Color;
-use graphics::errors::ScreenCreateError;
-use graphics::events::{Event, Key};
-use graphics::screen::Screen;
-use graphics::shape::Shape as ScreenShape;
-use graphics::FrameTimer;
-
-use crate::input::Input;
 use crate::physics::Physical;
 use crate::shape::Shape;
+use graphics::color::Color;
+use graphics::screen::{Screen, ScreenRender};
+use graphics::shape::Shape as ScreenShape;
+use specs::{Component, Join, ReadStorage, VecStorage, WriteStorage};
 
 #[derive(Component, Debug)]
 #[storage(VecStorage)]
@@ -31,20 +24,12 @@ impl Renderable {
 }
 
 pub struct Renderer {
-    screen: Screen,
-    clear_color: Color,
-
     max_x: f32,
     max_y: f32,
-
-    frame_timer: FrameTimer,
 }
 
 impl Renderer {
-    pub fn create(width: f64, height: f64) -> Result<Self, ScreenCreateError> {
-        let screen = Screen::create(width, height, "Asteroids")?;
-        let clear_color = Color::new(0.2, 0.2, 0.5, 1.0);
-
+    pub fn new(width: f64, height: f64) -> Self {
         let aspect_ratio = (width / height) as f32;
         let (max_x, max_y) = if aspect_ratio > 1.0 {
             (aspect_ratio, 1.0)
@@ -52,76 +37,56 @@ impl Renderer {
             (1.0, 1.0 / aspect_ratio)
         };
 
-        Ok(Renderer {
-            screen,
-            clear_color,
-
-            max_x,
-            max_y,
-
-            frame_timer: FrameTimer::new(),
-        })
+        Self { max_x, max_y }
     }
 
     pub fn get_max_coords(&self) -> (f32, f32) {
         (self.max_x, self.max_y)
     }
-}
 
-impl<'a> System<'a> for Renderer {
-    type SystemData = (
-        Write<'a, Input>,
-        ReadStorage<'a, Shape>,
-        WriteStorage<'a, Renderable>,
-        ReadStorage<'a, Physical>,
-    );
+    pub fn update(
+        &self,
+        screen: &mut Screen,
+        data: (ReadStorage<Shape>, WriteStorage<Renderable>),
+    ) {
+        let (shapes, mut renderables) = data;
 
-    fn run(&mut self, data: Self::SystemData) {
-        let (mut input, shapes, mut renderables, physicals) = data;
-
-        self.screen.clear(self.clear_color);
-
-        for (shape, renderable, physical) in (&shapes, &mut renderables, &physicals).join() {
-            let render_transform = RenderTransform::new(
-                physical.render_position(),
-                self.max_x,
-                self.max_y,
-                shape.radius,
-            );
-
+        for (shape, renderable) in (&shapes, &mut renderables).join() {
             match renderable.screen_shape {
-                Some(ref s) => render_transform.draw_shape(&mut self.screen, renderable.color, s),
+                Some(_) => (),
                 ref mut s => {
-                    // s is None, so create the shape and render it right away.
-                    let new_s = self.screen.create_shape(&shape.verts, &shape.indices);
-                    render_transform.draw_shape(&mut self.screen, renderable.color, &new_s);
+                    // s is None, so create the shape
+                    let new_s =
+                        screen.create_shape(&shape.verts, &shape.indices, "Renderable Shape");
                     *s = Some(new_s);
                 }
             };
         }
+    }
 
-        self.screen.flush();
+    pub fn render(
+        &self,
+        mut screen_render: ScreenRender,
+        data: (
+            ReadStorage<Shape>,
+            WriteStorage<Renderable>,
+            ReadStorage<Physical>,
+        ),
+    ) {
+        let (shapes, mut renderables, physicals) = data;
 
-        input.frame_time = self.frame_timer.update(10, 0.1);
+        for (shape, renderable, physical) in (&shapes, &mut renderables, &physicals).join() {
+            if let Some(ref s) = renderable.screen_shape {
+                let render_transform = RenderTransform::new(
+                    physical.render_position(),
+                    self.max_x,
+                    self.max_y,
+                    shape.radius,
+                );
 
-        self.screen.poll_events(|event| match event {
-            Event::Exit => input.should_exit = true,
-
-            Event::KeyPress { key: Key::W, down } => input.actions.accel_forward = down,
-            Event::KeyPress { key: Key::D, down } => input.actions.accel_right = down,
-            Event::KeyPress { key: Key::A, down } => input.actions.accel_left = down,
-
-            Event::KeyPress {
-                key: Key::Right,
-                down,
-            } => input.actions.turn_right = down,
-            Event::KeyPress {
-                key: Key::Left,
-                down,
-            } => input.actions.turn_left = down,
-
-            _ => (),
-        });
+                render_transform.draw_shape(&mut screen_render, renderable.color, s);
+            }
+        }
     }
 }
 
@@ -179,10 +144,10 @@ impl RenderTransform {
         RenderTransform { transforms }
     }
 
-    fn draw_shape(&self, screen: &mut Screen, color: Color, shape: &ScreenShape) {
+    fn draw_shape(&self, screen_render: &mut ScreenRender, color: Color, shape: &ScreenShape) {
         for optional_transform in &self.transforms {
             if let Some(ref transform) = *optional_transform {
-                screen.draw_shape(transform, color, shape);
+                screen_render.draw_shape(transform, color, shape);
             }
         }
     }

@@ -42,7 +42,7 @@ impl<'a> System<'a> for PlayerController {
 
         for (player, physical) in (&player, &mut physical).join() {
             if input.actions.accel_forward {
-                physical.add_relative_pulse(player.forward_acceleration * Vector2::y());
+                physical.add_relative_pulse(-player.forward_acceleration * Vector2::y());
             }
 
             if input.actions.accel_right {
@@ -54,11 +54,11 @@ impl<'a> System<'a> for PlayerController {
             }
 
             if input.actions.turn_right {
-                physical.add_angular_pulse(player.angular_acceleration);
+                physical.add_angular_pulse(-player.angular_acceleration);
             }
 
             if input.actions.turn_left {
-                physical.add_angular_pulse(-player.angular_acceleration);
+                physical.add_angular_pulse(player.angular_acceleration);
             }
         }
     }

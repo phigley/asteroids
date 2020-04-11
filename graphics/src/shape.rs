@@ -1,6 +1,5 @@
-use std::cell::RefCell;
 use std::fmt;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 use std::vec::Vec;
 
 use crate::color::Color;
@@ -10,7 +9,7 @@ use wgpu::{Buffer, BufferUsage, Device};
 
 #[derive(Clone)]
 pub struct Shape {
-    pub(crate) data: Rc<RefCell<ShapeData>>,
+    pub(crate) data: Arc<Mutex<ShapeData>>,
     pub name: &'static str,
 }
 

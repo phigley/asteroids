@@ -1,6 +1,8 @@
-use crate::na::{Isometry2, UnitComplex, Vector2};
-use crate::ncollide2d::shape::{Polyline, ShapeHandle};
-use crate::nphysics2d::{
+use crate::input::Input;
+use crate::shape::Shape;
+use nalgebra::{Isometry2, UnitComplex, Vector2};
+use ncollide2d::shape::{Polyline, ShapeHandle};
+use nphysics2d::{
     algebra::Velocity2,
     force_generator::DefaultForceGeneratorSet,
     joint::DefaultJointConstraintSet,
@@ -14,9 +16,6 @@ use specs::{
     Component, Entities, HashMapStorage, Join, LazyUpdate, Read, ReadStorage, System, VecStorage,
     Write, WriteStorage,
 };
-
-use crate::input::Input;
-use crate::shape::Shape;
 
 #[derive(Component)]
 #[storage(HashMapStorage)]
