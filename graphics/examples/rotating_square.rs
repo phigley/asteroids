@@ -41,10 +41,10 @@ fn main() -> Result<()> {
     let indices = [0, 1, 2, 0, 2, 3];
 
     let verts = [
-        Point2::new(-0.5, 0.5),
-        Point2::new(0.5, 0.5),
-        Point2::new(0.5, -0.5),
         Point2::new(-0.5, -0.5),
+        Point2::new(0.5, -0.5),
+        Point2::new(0.5, 0.5),
+        Point2::new(-0.5, 0.5),
     ];
 
     let shape = runner.screen.create_shape(&verts, &indices, "square");

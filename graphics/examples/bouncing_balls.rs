@@ -174,7 +174,7 @@ struct ApplyPhysics {
 
 impl ApplyPhysics {
     fn new() -> ApplyPhysics {
-        let acceleration = Vector2::new(0.0, 0.98);
+        let acceleration = Vector2::new(0.0, -0.98);
         let restitution = 0.99f32;
 
         let max_velocity = 3.0f32;

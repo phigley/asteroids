@@ -25,7 +25,7 @@ pub fn build_circle(radius: f32, num_vertices: usize) -> (Vec<Vertex>, Vec<u16>)
         // build the first n-1 wedges.
         for i in 1..num_vertices {
             let x = radius * f32::cos(current_angle);
-            let y = -radius * f32::sin(current_angle);
+            let y = radius * f32::sin(current_angle);
 
             verts.push(Vertex::new(x, y));
 
@@ -63,8 +63,8 @@ mod tests {
     }
 
     fn vertex_distance(v0: Vertex, v1: Vertex) -> f32 {
-        let dx = v0.position.x - v1.position.x;
-        let dy = v0.position.y - v1.position.y;
+        let dx = v0.position[0] - v1.position[0];
+        let dy = v0.position[1] - v1.position[1];
 
         f32::sqrt(dx * dx + dy * dy)
     }

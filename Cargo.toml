@@ -12,6 +12,6 @@ specs = "0.16"
 specs-derive = "0.4"
 nphysics2d = "0.14"
 ncollide2d = "0.22"
-nalgebra = "0.20"
+nalgebra = "0.20" # 0.20 required by ncollide2d 0.22
 rand = "0.7"
 anyhow = "1.0"

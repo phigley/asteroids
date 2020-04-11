@@ -71,7 +71,7 @@ fn pixel_to_pos(x_pixel: f32, y_pixel: f32, width: f32, height: f32) -> Point2<f
     let divisor = f32::min(half_width, half_height);
 
     let x = (x_pixel - half_width) / divisor;
-    let y = (y_pixel - half_height) / divisor;
+    let y = (half_height - y_pixel) / divisor;
 
     Point2::new(x, y)
 }

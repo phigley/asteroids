@@ -1,11 +1,11 @@
-use std::fmt;
-use std::sync::{Arc, Mutex};
-use std::vec::Vec;
-
 use crate::color::Color;
 use crate::model_transform::ModelTransform;
 use crate::vertex::Vertex;
+use std::fmt;
+use std::sync::{Arc, Mutex};
+use std::vec::Vec;
 use wgpu::{Buffer, BufferUsage, Device};
+use zerocopy::AsBytes;
 
 #[derive(Clone)]
 pub struct Shape {
@@ -30,13 +30,10 @@ pub(crate) struct ShapeData {
 
 impl ShapeData {
     pub(crate) fn new(device: &mut Device, vertex_data: &[Vertex], indices: &[u16]) -> Self {
-        let vertex_buffer = device
-            .create_buffer_mapped(vertex_data.len(), BufferUsage::VERTEX)
-            .fill_from_slice(vertex_data);
+        let vertex_buffer =
+            device.create_buffer_with_data(vertex_data.as_bytes(), BufferUsage::VERTEX);
 
-        let index_buffer = device
-            .create_buffer_mapped(indices.len(), BufferUsage::INDEX)
-            .fill_from_slice(indices);
+        let index_buffer = device.create_buffer_with_data(indices.as_bytes(), BufferUsage::INDEX);
         let num_indices = indices.len() as u32;
 
         Self {

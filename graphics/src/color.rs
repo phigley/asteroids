@@ -2,9 +2,10 @@ use std::mem;
 use wgpu::{
     BufferAddress, InputStepMode, VertexAttributeDescriptor, VertexBufferDescriptor, VertexFormat,
 };
+use zerocopy::AsBytes;
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, AsBytes)]
 pub struct Color {
     pub r: f32,
     pub g: f32,

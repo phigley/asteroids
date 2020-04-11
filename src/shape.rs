@@ -38,10 +38,10 @@ impl Shape {
         let scale = 0.025;
 
         let verts = vec![
-            Point2::new(0.0, -1.0 * scale),
-            Point2::new(-1.0 * scale, 1.0 * scale),
-            Point2::new(0.0, 0.5 * scale),
-            Point2::new(1.0 * scale, 1.0 * scale),
+            Point2::new(0.0, 1.0 * scale),
+            Point2::new(-1.0 * scale, -1.0 * scale),
+            Point2::new(0.0, -0.5 * scale),
+            Point2::new(1.0 * scale, -1.0 * scale),
         ];
         let indices = vec![0, 1, 2, 0, 2, 3];
 
@@ -110,7 +110,7 @@ impl Noise {
             let radius = self.base_radius + radius_delta;
 
             let x = radius * angle.cos();
-            let y = -radius * angle.sin();
+            let y = radius * angle.sin();
 
             verts.push(Point2::new(x, y));
         }

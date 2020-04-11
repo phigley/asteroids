@@ -1,20 +1,18 @@
-use nalgebra::Vector2;
 use std::mem;
 use wgpu::{
     BufferAddress, InputStepMode, VertexAttributeDescriptor, VertexBufferDescriptor, VertexFormat,
 };
+use zerocopy::AsBytes;
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, AsBytes)]
 pub struct Vertex {
-    pub position: Vector2<f32>,
+    pub position: [f32; 2],
 }
 
 impl Vertex {
     pub fn new(x: f32, y: f32) -> Self {
-        Self {
-            position: Vector2::new(x, y),
-        }
+        Self { position: [x, y] }
     }
 
     pub fn desc<'a>() -> VertexBufferDescriptor<'a> {

@@ -22,9 +22,9 @@ fn main() -> Result<()> {
 
     let indices = [0, 1, 2];
     let verts = [
-        Point2::new(-0.5, 0.5),
-        Point2::new(0.5, 0.5),
-        Point2::new(0.0, -0.5),
+        Point2::new(-0.5, -0.5),
+        Point2::new(0.5, -0.5),
+        Point2::new(0.0, 0.5),
     ];
     let shape = runner.screen.create_shape(&verts, &indices, "triangle");
     let yellow = color::Color::new(1.0, 1.0, 0.0, 1.0);

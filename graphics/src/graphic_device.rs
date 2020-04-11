@@ -1,5 +1,11 @@
+use crate::color::Color;
+use crate::errors::ScreenCreateError;
+use crate::model_transform::ModelTransform;
+use crate::shape::{Shape, ShapeData};
+use crate::uniforms::ViewUniforms;
+use crate::vertex::Vertex;
 use nalgebra::Matrix4;
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{Arc, Mutex, MutexGuard, Weak};
 use std::vec::Vec;
 use wgpu;
 use wgpu::{
@@ -7,13 +13,7 @@ use wgpu::{
     SwapChain, SwapChainDescriptor,
 };
 use winit::{dpi::PhysicalSize, window::Window};
-
-use crate::color::Color;
-use crate::errors::ScreenCreateError;
-use crate::model_transform::ModelTransform;
-use crate::shape::{Shape, ShapeData};
-use crate::uniforms::ViewUniforms;
-use crate::vertex::Vertex;
+use zerocopy::AsBytes;
 
 pub struct GraphicDevice {
     surface: Surface,
@@ -30,23 +30,30 @@ pub struct GraphicDevice {
 }
 
 impl GraphicDevice {
-    pub fn create(
+    pub async fn create(
         window: &Window,
     ) -> Result<(GraphicDevice, PhysicalSize<u32>, f64), ScreenCreateError> {
         let physical_size = window.inner_size();
 
         let surface = wgpu::Surface::create(window);
-        let adapter = wgpu::Adapter::request(&wgpu::RequestAdapterOptions {
-            ..Default::default()
-        })
+        let adapter = wgpu::Adapter::request(
+            &wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::Default,
+                compatible_surface: Some(&surface),
+            },
+            wgpu::BackendBit::PRIMARY,
+        )
+        .await
         .ok_or(ScreenCreateError::AdapterCreateFailure)?;
 
-        let (device, queue) = adapter.request_device(&wgpu::DeviceDescriptor {
-            extensions: wgpu::Extensions {
-                anisotropic_filtering: false,
-            },
-            limits: Default::default(),
-        });
+        let (device, queue) = adapter
+            .request_device(&wgpu::DeviceDescriptor {
+                extensions: wgpu::Extensions {
+                    anisotropic_filtering: false,
+                },
+                limits: Default::default(),
+            })
+            .await;
 
         let sc_desc = SwapChainDescriptor {
             usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
@@ -54,16 +61,17 @@ impl GraphicDevice {
             format: wgpu::TextureFormat::Bgra8UnormSrgb,
             width: physical_size.width,
             height: physical_size.height,
-            present_mode: wgpu::PresentMode::Vsync,
+            present_mode: wgpu::PresentMode::Mailbox,
         };
         let swap_chain = device.create_swap_chain(&surface, &sc_desc);
 
         let dpi_factor = window.scale_factor();
 
         let view_uniforms = ViewUniforms::from(physical_size);
-        let view_uniform_buffer = device
-            .create_buffer_mapped(1, BufferUsage::UNIFORM | BufferUsage::COPY_DST)
-            .fill_from_slice(&[view_uniforms]);
+        let view_uniform_buffer = device.create_buffer_with_data(
+            view_uniforms.as_bytes(),
+            BufferUsage::UNIFORM | BufferUsage::COPY_DST,
+        );
 
         let view_uniform_bind_group_layout =
             device.create_bind_group_layout(&ViewUniforms::layout_desc());
@@ -77,6 +85,7 @@ impl GraphicDevice {
                     range: 0..std::mem::size_of_val(&view_uniform_buffer) as BufferAddress,
                 },
             }],
+            label: Some("ViewUniforms"),
         });
 
         let render_pipeline_layout =
@@ -129,8 +138,10 @@ impl GraphicDevice {
                 }],
                 primitive_topology: wgpu::PrimitiveTopology::TriangleList,
                 depth_stencil_state: None,
-                index_format: wgpu::IndexFormat::Uint16,
-                vertex_buffers: &[Vertex::desc(), Color::desc(), ModelTransform::desc()],
+                vertex_state: wgpu::VertexStateDescriptor {
+                    index_format: wgpu::IndexFormat::Uint16,
+                    vertex_buffers: &[Vertex::desc(), Color::desc(), ModelTransform::desc()],
+                },
                 sample_count: 1,
                 sample_mask: !0,
                 alpha_to_coverage_enabled: false,
@@ -163,12 +174,13 @@ impl GraphicDevice {
 
         let mut encoder = self
             .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("SetWindowSize"),
+            });
 
         let staging_buffer = self
             .device
-            .create_buffer_mapped(1, BufferUsage::COPY_SRC)
-            .fill_from_slice(&[view_uniforms]);
+            .create_buffer_with_data(view_uniforms.as_bytes(), BufferUsage::COPY_SRC);
 
         encoder.copy_buffer_to_buffer(
             &staging_buffer,
@@ -208,17 +220,40 @@ impl GraphicDevice {
         shape_data.instance_colors.push(color);
     }
 
-    pub fn render_frame(&mut self, clear_color: wgpu::Color) {
+    pub fn render_frame(&mut self, clear_color: wgpu::Color) -> Result<(), wgpu::TimeOut> {
         self.shapes
             .retain(|shape_data| shape_data.strong_count() > 0);
 
-        let frame = self.swap_chain.get_next_texture();
+        let frame = self.swap_chain.get_next_texture()?;
 
         let mut encoder = self
             .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("RenderFrame"),
+            });
 
         {
+            let mut shape_data_cells: Vec<Arc<Mutex<ShapeData>>> = Vec::new();
+            for shape_entry in &self.shapes {
+                if let Some(shape_data_cell) = shape_entry.upgrade() {
+                    shape_data_cells.push(shape_data_cell);
+                }
+            }
+
+            let mut shape_data_locks: Vec<MutexGuard<ShapeData>> = Vec::new();
+            for shape_data_cell in &shape_data_cells {
+                shape_data_locks.push(shape_data_cell.lock().unwrap());
+            }
+
+            let mut shape_render_pass_data: Vec<ShapeRenderPassData> = Vec::new();
+            for shape_data in &mut shape_data_locks {
+                if let Some(shape_render_pass) =
+                    ShapeRenderPassData::create(shape_data, &self.device)
+                {
+                    shape_render_pass_data.push(shape_render_pass);
+                }
+            }
+
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                     attachment: &frame.view,
@@ -233,41 +268,72 @@ impl GraphicDevice {
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &self.view_uniform_bind_group, &[]);
 
-            for shapes_entry in &self.shapes {
-                if let Some(shape_data_cell) = shapes_entry.upgrade() {
-                    let mut shape_data = shape_data_cell.lock().unwrap();
+            for shape_render_pass in &shape_render_pass_data {
+                render_pass.set_vertex_buffer(0, shape_render_pass.vertex_buffer, 0, 0);
+                render_pass.set_vertex_buffer(1, &shape_render_pass.instance_colors_buffer, 0, 0);
+                render_pass.set_vertex_buffer(
+                    2,
+                    &shape_render_pass.instance_transforms_buffer,
+                    0,
+                    0,
+                );
+                render_pass.set_index_buffer(shape_render_pass.index_buffer, 0, 0);
 
-                    let instance_transforms_buffer = self
-                        .device
-                        .create_buffer_mapped(
-                            shape_data.instance_transforms.len(),
-                            BufferUsage::VERTEX,
-                        )
-                        .fill_from_slice(&shape_data.instance_transforms);
-
-                    let instance_colors_buffer = self
-                        .device
-                        .create_buffer_mapped(shape_data.instance_colors.len(), BufferUsage::VERTEX)
-                        .fill_from_slice(&shape_data.instance_colors);
-
-                    render_pass.set_vertex_buffers(
-                        0,
-                        &[
-                            (&shape_data.vertex_buffer, 0),
-                            (&instance_colors_buffer, 0),
-                            (&instance_transforms_buffer, 0),
-                        ],
-                    );
-                    render_pass.set_index_buffer(&shape_data.index_buffer, 0);
-
-                    let num_instances = shape_data.instance_transforms.len() as u32;
-                    render_pass.draw_indexed(0..shape_data.num_indices, 0, 0..num_instances);
-
-                    shape_data.instance_transforms.clear();
-                    shape_data.instance_colors.clear();
-                }
+                render_pass.draw_indexed(
+                    0..shape_render_pass.num_indices,
+                    0,
+                    0..shape_render_pass.num_instances,
+                );
             }
         }
         self.queue.submit(&[encoder.finish()]);
+        Ok(())
+    }
+}
+
+struct ShapeRenderPassData<'a> {
+    vertex_buffer: &'a Buffer,
+    index_buffer: &'a Buffer,
+    num_indices: u32,
+
+    instance_transforms_buffer: Buffer,
+    instance_colors_buffer: Buffer,
+    num_instances: u32,
+}
+
+impl<'a> ShapeRenderPassData<'a> {
+    fn create(shape_data: &'a mut ShapeData, device: &Device) -> Option<Self> {
+        if !shape_data.instance_transforms.is_empty() {
+            let vertex_buffer = &shape_data.vertex_buffer;
+            let index_buffer = &shape_data.index_buffer;
+            let num_indices = shape_data.num_indices;
+
+            let instance_transforms_buffer = device.create_buffer_with_data(
+                shape_data.instance_transforms.as_bytes(),
+                BufferUsage::VERTEX,
+            );
+
+            let instance_colors_buffer = device.create_buffer_with_data(
+                shape_data.instance_colors.as_bytes(),
+                BufferUsage::VERTEX,
+            );
+
+            let num_instances = shape_data.instance_transforms.len() as u32;
+
+            shape_data.instance_transforms.clear();
+            shape_data.instance_colors.clear();
+
+            Some(Self {
+                vertex_buffer,
+                index_buffer,
+                num_indices,
+
+                instance_transforms_buffer,
+                instance_colors_buffer,
+                num_instances,
+            })
+        } else {
+            None
+        }
     }
 }

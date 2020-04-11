@@ -1,5 +1,6 @@
 use nalgebra::{Matrix4, Orthographic3};
 use winit::dpi::PhysicalSize;
+use zerocopy::AsBytes;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -10,12 +11,17 @@ pub struct ViewUniforms {
 impl ViewUniforms {
     pub fn layout_desc<'a>() -> wgpu::BindGroupLayoutDescriptor<'a> {
         wgpu::BindGroupLayoutDescriptor {
-            bindings: &[wgpu::BindGroupLayoutBinding {
+            bindings: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
                 visibility: wgpu::ShaderStage::VERTEX,
                 ty: wgpu::BindingType::UniformBuffer { dynamic: false },
             }],
+            label: Some("ViewUniforms"),
         }
+    }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        self.projection.as_slice().as_bytes()
     }
 }
 

@@ -3,18 +3,21 @@ use std::mem;
 use wgpu::{
     BufferAddress, InputStepMode, VertexAttributeDescriptor, VertexBufferDescriptor, VertexFormat,
 };
+use zerocopy::AsBytes;
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, AsBytes)]
 pub struct ModelTransform {
-    pub transform: Matrix4<f32>,
+    pub transform: [[f32; 4]; 4],
 }
 
 const FLOAT_SIZE: BufferAddress = std::mem::size_of::<f32>() as BufferAddress;
 
 impl ModelTransform {
-    pub fn new(transform: Matrix4<f32>) -> Self {
-        Self { transform }
+    pub fn new(transform_matrix: Matrix4<f32>) -> Self {
+        Self {
+            transform: transform_matrix.into(),
+        }
     }
 
     pub fn desc<'a>() -> VertexBufferDescriptor<'a> {

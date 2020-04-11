@@ -65,7 +65,7 @@ impl App<'_, '_> {
 
         let player_pos = Isometry2::new(Vector2::new(0.0, 0.0), na::zero());
         let player_shape = Shape::create_ship();
-        let player_physical = AddCollision::new(player_pos, Vector2::new(0.25, -0.5));
+        let player_physical = AddCollision::new(player_pos, Vector2::new(0.25, 0.5));
         world
             .create_entity()
             .with(Player::new())
@@ -75,8 +75,8 @@ impl App<'_, '_> {
             .build();
 
         let astroid_shape = Shape::create_asteroid(&mut rng);
-        let asteroid_pos = Isometry2::new(Vector2::new(0.5, -0.5), na::zero());
-        let astroid_physical = AddCollision::new(asteroid_pos, Vector2::new(0.25, -0.5));
+        let asteroid_pos = Isometry2::new(Vector2::new(0.5, 0.5), na::zero());
+        let astroid_physical = AddCollision::new(asteroid_pos, Vector2::new(0.25, 0.5));
         world
             .create_entity()
             .with(astroid_shape)
@@ -85,8 +85,8 @@ impl App<'_, '_> {
             .build();
 
         let astroid_shape2 = Shape::create_asteroid(&mut rng);
-        let asteroid_pos2 = Isometry2::new(Vector2::new(-0.5, -0.5), na::zero());
-        let astroid_physical2 = AddCollision::new(asteroid_pos2, Vector2::new(-0.25, -0.5));
+        let asteroid_pos2 = Isometry2::new(Vector2::new(-0.5, 0.5), na::zero());
+        let astroid_physical2 = AddCollision::new(asteroid_pos2, Vector2::new(-0.25, 0.5));
         world
             .create_entity()
             .with(astroid_shape2)

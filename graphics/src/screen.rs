@@ -77,7 +77,8 @@ impl Screen {
             .build(event_loop)
             .map_err(ScreenCreateError::WindowCreateFailure)?;
 
-        let (device, physical_size, dpi_factor) = GraphicDevice::create(&window)?;
+        let (device, physical_size, dpi_factor) =
+            futures::executor::block_on(GraphicDevice::create(&window))?;
 
         let wgpu_clear_color = wgpu::Color {
             r: clear_color.r as f64,
@@ -158,7 +159,9 @@ impl Screen {
                         device: &mut self.device,
                     });
 
-                    self.device.render_frame(self.clear_color);
+                    self.device
+                        .render_frame(self.clear_color)
+                        .expect("failed to render");
                 }
             }
             _ => *control_flow = ControlFlow::WaitUntil(self.next_frame_time),
