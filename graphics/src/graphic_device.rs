@@ -7,7 +7,6 @@ use crate::vertex::Vertex;
 use nalgebra::Matrix4;
 use std::sync::{Arc, Mutex, MutexGuard, Weak};
 use std::vec::Vec;
-use wgpu;
 use wgpu::{
     BindGroup, Buffer, BufferAddress, BufferUsage, Device, Queue, RenderPipeline, Surface,
     SwapChain, SwapChainDescriptor,

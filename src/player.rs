@@ -1,5 +1,3 @@
-use std;
-
 use specs::storage::BTreeStorage;
 use specs::{Component, Join, Read, ReadStorage, System, WriteStorage};
 
