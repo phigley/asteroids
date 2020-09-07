@@ -8,6 +8,9 @@ pub enum ScreenCreateError {
     #[error("Failed to create adapter")]
     AdapterCreateFailure,
 
+    #[error("Failed to create device")]
+    DeviceCreateFailure(#[source] wgpu::RequestDeviceError),
+
     #[error("Pipeline create failure for {file_name}.")]
     PipelineFailure {
         source: std::io::Error,

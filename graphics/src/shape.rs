@@ -4,6 +4,7 @@ use crate::vertex::Vertex;
 use std::fmt;
 use std::sync::{Arc, Mutex};
 use std::vec::Vec;
+use wgpu::util::DeviceExt;
 use wgpu::{Buffer, BufferUsage, Device};
 use zerocopy::AsBytes;
 
@@ -30,10 +31,17 @@ pub(crate) struct ShapeData {
 
 impl ShapeData {
     pub(crate) fn new(device: &mut Device, vertex_data: &[Vertex], indices: &[u16]) -> Self {
-        let vertex_buffer =
-            device.create_buffer_with_data(vertex_data.as_bytes(), BufferUsage::VERTEX);
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("shape_vertex"),
+            contents: vertex_data.as_bytes(),
+            usage: BufferUsage::VERTEX,
+        });
 
-        let index_buffer = device.create_buffer_with_data(indices.as_bytes(), BufferUsage::INDEX);
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("shape_indices"),
+            contents: indices.as_bytes(),
+            usage: BufferUsage::INDEX,
+        });
         let num_indices = indices.len() as u32;
 
         Self {

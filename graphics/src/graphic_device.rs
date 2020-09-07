@@ -7,6 +7,7 @@ use crate::vertex::Vertex;
 use nalgebra::Matrix4;
 use std::sync::{Arc, Mutex, MutexGuard, Weak};
 use std::vec::Vec;
+use wgpu::util::DeviceExt;
 use wgpu::{
     BindGroup, Buffer, BufferAddress, BufferUsage, Device, Queue, RenderPipeline, Surface,
     SwapChain, SwapChainDescriptor,
@@ -34,25 +35,27 @@ impl GraphicDevice {
     ) -> Result<(GraphicDevice, PhysicalSize<u32>, f64), ScreenCreateError> {
         let physical_size = window.inner_size();
 
-        let surface = wgpu::Surface::create(window);
-        let adapter = wgpu::Adapter::request(
-            &wgpu::RequestAdapterOptions {
+        let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
+        let surface = unsafe { instance.create_surface(window) };
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::Default,
                 compatible_surface: Some(&surface),
-            },
-            wgpu::BackendBit::PRIMARY,
-        )
-        .await
-        .ok_or(ScreenCreateError::AdapterCreateFailure)?;
+            })
+            .await
+            .ok_or(ScreenCreateError::AdapterCreateFailure)?;
 
         let (device, queue) = adapter
-            .request_device(&wgpu::DeviceDescriptor {
-                extensions: wgpu::Extensions {
-                    anisotropic_filtering: false,
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    features: wgpu::Features::empty(),
+                    limits: Default::default(),
+                    shader_validation: true,
                 },
-                limits: Default::default(),
-            })
-            .await;
+                None,
+            )
+            .await
+            .map_err(ScreenCreateError::DeviceCreateFailure)?;
 
         let sc_desc = SwapChainDescriptor {
             usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
@@ -67,51 +70,63 @@ impl GraphicDevice {
         let dpi_factor = window.scale_factor();
 
         let view_uniforms = ViewUniforms::from(physical_size);
-        let view_uniform_buffer = device.create_buffer_with_data(
-            view_uniforms.as_bytes(),
-            BufferUsage::UNIFORM | BufferUsage::COPY_DST,
-        );
+        let view_uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("view_uniforms"),
+            contents: view_uniforms.projection.as_slice().as_bytes(),
+            usage: BufferUsage::UNIFORM | BufferUsage::COPY_DST,
+        });
 
         let view_uniform_bind_group_layout =
-            device.create_bind_group_layout(&ViewUniforms::layout_desc());
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("ViewUniforms"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStage::VERTEX,
+                    ty: wgpu::BindingType::UniformBuffer {
+                        dynamic: false,
+                        min_binding_size: wgpu::BufferSize::new(64),
+                    },
+                    count: None,
+                }],
+            });
 
         let view_uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &view_uniform_bind_group_layout,
-            bindings: &[wgpu::Binding {
+            entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: wgpu::BindingResource::Buffer {
-                    buffer: &view_uniform_buffer,
-                    range: 0..std::mem::size_of_val(&view_uniform_buffer) as BufferAddress,
-                },
+                resource: wgpu::BindingResource::Buffer(view_uniform_buffer.slice(..)),
             }],
             label: Some("ViewUniforms"),
         });
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("render_pipepline_layout"),
                 bind_group_layouts: &[&view_uniform_bind_group_layout],
+                push_constant_ranges: &[],
             });
 
         let render_pipeline = {
-            let vs_spirv: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/simple.vert.spv"));
-            let fs_spirv: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/simple.frag.spv"));
-            let vs_data = wgpu::read_spirv(std::io::Cursor::new(vs_spirv)).map_err(|err| {
-                ScreenCreateError::PipelineFailure {
-                    source: err,
-                    file_name: "simple.vert",
-                }
-            })?;
-            let fs_data = wgpu::read_spirv(std::io::Cursor::new(fs_spirv)).map_err(|err| {
-                ScreenCreateError::PipelineFailure {
-                    source: err,
-                    file_name: "simple.frag",
-                }
-            })?;
-            let vs_module = device.create_shader_module(&vs_data);
-            let fs_module = device.create_shader_module(&fs_data);
+            let vs_spirv = wgpu::include_spirv!(concat!(env!("OUT_DIR"), "/simple.vert.spv"));
+            let fs_spirv = wgpu::include_spirv!(concat!(env!("OUT_DIR"), "/simple.frag.spv"));
+            // let vs_data = wgpu::read_spirv(std::io::Cursor::new(vs_spirv)).map_err(|err| {
+            //     ScreenCreateError::PipelineFailure {
+            //         source: err,
+            //         file_name: "simple.vert",
+            //     }
+            // })?;
+            // let fs_data = wgpu::read_spirv(std::io::Cursor::new(fs_spirv)).map_err(|err| {
+            //     ScreenCreateError::PipelineFailure {
+            //         source: err,
+            //         file_name: "simple.frag",
+            //     }
+            // })?;
+            let vs_module = device.create_shader_module(vs_spirv);
+            let fs_module = device.create_shader_module(fs_spirv);
 
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                layout: &render_pipeline_layout,
+                label: None,
+                layout: Some(&render_pipeline_layout),
                 vertex_stage: wgpu::ProgrammableStageDescriptor {
                     module: &vs_module,
                     entry_point: "main",
@@ -124,9 +139,7 @@ impl GraphicDevice {
                 rasterization_state: Some(wgpu::RasterizationStateDescriptor {
                     front_face: wgpu::FrontFace::Ccw,
                     cull_mode: wgpu::CullMode::Back,
-                    depth_bias: 0,
-                    depth_bias_slope_scale: 0.0,
-                    depth_bias_clamp: 0.0,
+                    ..Default::default()
                 }),
 
                 color_states: &[wgpu::ColorStateDescriptor {
@@ -179,7 +192,11 @@ impl GraphicDevice {
 
         let staging_buffer = self
             .device
-            .create_buffer_with_data(view_uniforms.as_bytes(), BufferUsage::COPY_SRC);
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("staging_buffer"),
+                contents: view_uniforms.projection.as_slice().as_bytes(),
+                usage: BufferUsage::COPY_SRC,
+            });
 
         encoder.copy_buffer_to_buffer(
             &staging_buffer,
@@ -189,7 +206,7 @@ impl GraphicDevice {
             std::mem::size_of::<ViewUniforms>() as BufferAddress,
         );
 
-        self.queue.submit(&[encoder.finish()]);
+        self.queue.submit(Some(encoder.finish()));
     }
 
     pub fn create_shape(
@@ -219,11 +236,11 @@ impl GraphicDevice {
         shape_data.instance_colors.push(color);
     }
 
-    pub fn render_frame(&mut self, clear_color: wgpu::Color) -> Result<(), wgpu::TimeOut> {
+    pub fn render_frame(&mut self, clear_color: wgpu::Color) -> Result<(), wgpu::SwapChainError> {
         self.shapes
             .retain(|shape_data| shape_data.strong_count() > 0);
 
-        let frame = self.swap_chain.get_next_texture()?;
+        let frame = self.swap_chain.get_current_frame()?;
 
         let mut encoder = self
             .device
@@ -255,11 +272,12 @@ impl GraphicDevice {
 
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                    attachment: &frame.view,
+                    attachment: &frame.output.view,
                     resolve_target: None,
-                    load_op: wgpu::LoadOp::Clear,
-                    store_op: wgpu::StoreOp::Store,
-                    clear_color,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(clear_color),
+                        store: true,
+                    },
                 }],
                 depth_stencil_attachment: None,
             });
@@ -268,15 +286,12 @@ impl GraphicDevice {
             render_pass.set_bind_group(0, &self.view_uniform_bind_group, &[]);
 
             for shape_render_pass in &shape_render_pass_data {
-                render_pass.set_vertex_buffer(0, shape_render_pass.vertex_buffer, 0, 0);
-                render_pass.set_vertex_buffer(1, &shape_render_pass.instance_colors_buffer, 0, 0);
-                render_pass.set_vertex_buffer(
-                    2,
-                    &shape_render_pass.instance_transforms_buffer,
-                    0,
-                    0,
-                );
-                render_pass.set_index_buffer(shape_render_pass.index_buffer, 0, 0);
+                render_pass.set_vertex_buffer(0, shape_render_pass.vertex_buffer.slice(..));
+                render_pass
+                    .set_vertex_buffer(1, shape_render_pass.instance_colors_buffer.slice(..));
+                render_pass
+                    .set_vertex_buffer(2, shape_render_pass.instance_transforms_buffer.slice(..));
+                render_pass.set_index_buffer(shape_render_pass.index_buffer.slice(..));
 
                 render_pass.draw_indexed(
                     0..shape_render_pass.num_indices,
@@ -285,7 +300,7 @@ impl GraphicDevice {
                 );
             }
         }
-        self.queue.submit(&[encoder.finish()]);
+        self.queue.submit(Some(encoder.finish()));
         Ok(())
     }
 }
@@ -307,15 +322,19 @@ impl<'a> ShapeRenderPassData<'a> {
             let index_buffer = &shape_data.index_buffer;
             let num_indices = shape_data.num_indices;
 
-            let instance_transforms_buffer = device.create_buffer_with_data(
-                shape_data.instance_transforms.as_bytes(),
-                BufferUsage::VERTEX,
-            );
+            let instance_transforms_buffer =
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("instance_transforms"),
+                    contents: shape_data.instance_transforms.as_bytes(),
+                    usage: BufferUsage::VERTEX,
+                });
 
-            let instance_colors_buffer = device.create_buffer_with_data(
-                shape_data.instance_colors.as_bytes(),
-                BufferUsage::VERTEX,
-            );
+            let instance_colors_buffer =
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("instance_colors"),
+                    contents: shape_data.instance_colors.as_bytes(),
+                    usage: BufferUsage::VERTEX,
+                });
 
             let num_instances = shape_data.instance_transforms.len() as u32;
 

@@ -6,22 +6,29 @@ use std::time::Duration;
 
 struct App {
     model: model::Model,
+    time: Duration,
 }
 
 impl App {
     fn new(model: model::Model) -> Self {
-        Self { model }
+        Self {
+            model,
+            time: Duration::new(0, 0),
+        }
     }
 }
 
 impl screen::ScreenCallbacks for App {
     fn update(&mut self, _screen: &mut screen::Screen, frame_delta: Duration) {
-        let period_ms = 5000;
+        let period = Duration::from_secs(5);
 
-        let delta_time_ms = frame_delta.as_millis();
+        self.time += frame_delta;
 
-        let delta_period = delta_time_ms % period_ms;
-        let delta_fraction = (delta_period as f32) / (period_ms as f32);
+        while self.time >= period {
+            self.time -= period;
+        }
+
+        let delta_fraction = self.time.div_f32(period.as_secs_f32()).as_secs_f32();
         let current_angle = -std::f32::consts::PI * 2.0 * delta_fraction;
 
         self.model.transform =
