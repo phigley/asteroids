@@ -1,7 +1,5 @@
 use std::mem;
-use wgpu::{
-    BufferAddress, InputStepMode, VertexAttributeDescriptor, VertexBufferDescriptor, VertexFormat,
-};
+use wgpu::{BufferAddress, InputStepMode, VertexAttribute, VertexBufferLayout, VertexFormat};
 use zerocopy::AsBytes;
 
 #[repr(C)]
@@ -18,11 +16,11 @@ impl Color {
         Color { r, g, b, a }
     }
 
-    pub(crate) fn desc<'a>() -> VertexBufferDescriptor<'a> {
-        VertexBufferDescriptor {
-            stride: mem::size_of::<Color>() as BufferAddress,
+    pub(crate) fn desc<'a>() -> VertexBufferLayout<'a> {
+        VertexBufferLayout {
+            array_stride: mem::size_of::<Color>() as BufferAddress,
             step_mode: InputStepMode::Instance,
-            attributes: &[VertexAttributeDescriptor {
+            attributes: &[VertexAttribute {
                 offset: 0,
                 shader_location: 1,
                 format: VertexFormat::Float4,

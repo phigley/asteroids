@@ -1,7 +1,5 @@
 use std::mem;
-use wgpu::{
-    BufferAddress, InputStepMode, VertexAttributeDescriptor, VertexBufferDescriptor, VertexFormat,
-};
+use wgpu::{BufferAddress, InputStepMode, VertexAttribute, VertexBufferLayout, VertexFormat};
 use zerocopy::AsBytes;
 
 #[repr(C)]
@@ -15,11 +13,11 @@ impl Vertex {
         Self { position: [x, y] }
     }
 
-    pub fn desc<'a>() -> VertexBufferDescriptor<'a> {
-        VertexBufferDescriptor {
-            stride: mem::size_of::<Vertex>() as BufferAddress,
+    pub fn desc<'a>() -> VertexBufferLayout<'a> {
+        VertexBufferLayout {
+            array_stride: mem::size_of::<Vertex>() as BufferAddress,
             step_mode: InputStepMode::Vertex,
-            attributes: &[VertexAttributeDescriptor {
+            attributes: &[VertexAttribute {
                 offset: 0,
                 shader_location: 0,
                 format: VertexFormat::Float2,

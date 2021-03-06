@@ -7,7 +7,7 @@ use crate::vertex::Vertex;
 use nalgebra::Matrix4;
 use std::sync::{Arc, Mutex, MutexGuard, Weak};
 use std::vec::Vec;
-use wgpu::util::DeviceExt;
+use wgpu::{util::DeviceExt, IndexFormat};
 use wgpu::{
     BindGroup, Buffer, BufferAddress, BufferUsage, Device, Queue, RenderPipeline, Surface,
     SwapChain, SwapChainDescriptor,
@@ -39,7 +39,7 @@ impl GraphicDevice {
         let surface = unsafe { instance.create_surface(window) };
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::Default,
+                power_preference: wgpu::PowerPreference::default(),
                 compatible_surface: Some(&surface),
             })
             .await
@@ -48,9 +48,9 @@ impl GraphicDevice {
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
+                    label: Some("Main Device"),
                     features: wgpu::Features::empty(),
                     limits: Default::default(),
-                    shader_validation: true,
                 },
                 None,
             )
@@ -58,7 +58,7 @@ impl GraphicDevice {
             .map_err(ScreenCreateError::DeviceCreateFailure)?;
 
         let sc_desc = SwapChainDescriptor {
-            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+            usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
             // We should query for format.
             format: wgpu::TextureFormat::Bgra8UnormSrgb,
             width: physical_size.width,
@@ -82,8 +82,9 @@ impl GraphicDevice {
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStage::VERTEX,
-                    ty: wgpu::BindingType::UniformBuffer {
-                        dynamic: false,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
                         min_binding_size: wgpu::BufferSize::new(64),
                     },
                     count: None,
@@ -94,7 +95,7 @@ impl GraphicDevice {
             layout: &view_uniform_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: wgpu::BindingResource::Buffer(view_uniform_buffer.slice(..)),
+                resource: view_uniform_buffer.as_entire_binding(),
             }],
             label: Some("ViewUniforms"),
         });
@@ -121,42 +122,38 @@ impl GraphicDevice {
             //         file_name: "simple.frag",
             //     }
             // })?;
-            let vs_module = device.create_shader_module(vs_spirv);
-            let fs_module = device.create_shader_module(fs_spirv);
+            let vs_module = device.create_shader_module(&vs_spirv);
+            let fs_module = device.create_shader_module(&fs_spirv);
 
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: None,
+                label: Some("MainRenderPipeline"),
                 layout: Some(&render_pipeline_layout),
-                vertex_stage: wgpu::ProgrammableStageDescriptor {
+                vertex: wgpu::VertexState {
                     module: &vs_module,
                     entry_point: "main",
+                    buffers: &[Vertex::desc(), Color::desc(), ModelTransform::desc()],
                 },
-                fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
+                fragment: Some(wgpu::FragmentState {
                     module: &fs_module,
                     entry_point: "main",
+                    targets: &[sc_desc.format.into()],
+                    // targets: &[wgpu::ColorTargetState {
+                    //     format: sc_desc.format,
+                    //     color_blend: wgpu::BlendState::REPLACE,
+                    //     alpha_blend: wgpu::BlendState::REPLACE,
+                    //     write_mask: wgpu::ColorWrite::ALL,
+                    // }],
                 }),
 
-                rasterization_state: Some(wgpu::RasterizationStateDescriptor {
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
                     front_face: wgpu::FrontFace::Ccw,
                     cull_mode: wgpu::CullMode::Back,
                     ..Default::default()
-                }),
-
-                color_states: &[wgpu::ColorStateDescriptor {
-                    format: sc_desc.format,
-                    color_blend: wgpu::BlendDescriptor::REPLACE,
-                    alpha_blend: wgpu::BlendDescriptor::REPLACE,
-                    write_mask: wgpu::ColorWrite::ALL,
-                }],
-                primitive_topology: wgpu::PrimitiveTopology::TriangleList,
-                depth_stencil_state: None,
-                vertex_state: wgpu::VertexStateDescriptor {
-                    index_format: wgpu::IndexFormat::Uint16,
-                    vertex_buffers: &[Vertex::desc(), Color::desc(), ModelTransform::desc()],
                 },
-                sample_count: 1,
-                sample_mask: !0,
-                alpha_to_coverage_enabled: false,
+
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState::default(),
             })
         };
 
@@ -271,6 +268,7 @@ impl GraphicDevice {
             }
 
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: None,
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                     attachment: &frame.output.view,
                     resolve_target: None,
@@ -291,7 +289,10 @@ impl GraphicDevice {
                     .set_vertex_buffer(1, shape_render_pass.instance_colors_buffer.slice(..));
                 render_pass
                     .set_vertex_buffer(2, shape_render_pass.instance_transforms_buffer.slice(..));
-                render_pass.set_index_buffer(shape_render_pass.index_buffer.slice(..));
+                render_pass.set_index_buffer(
+                    shape_render_pass.index_buffer.slice(..),
+                    IndexFormat::Uint16,
+                );
 
                 render_pass.draw_indexed(
                     0..shape_render_pass.num_indices,

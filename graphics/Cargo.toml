@@ -5,10 +5,10 @@ authors = ["Peter Higley <phigley@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-winit = "0.23"
-wgpu = "0.6"
+winit = "0.24"
+wgpu = "0.7"
 thiserror = "1.0"
-nalgebra = "0.23"
+nalgebra = "0.25"
 zerocopy = "0.3"
 futures = "0.3"
 

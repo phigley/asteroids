@@ -1,8 +1,6 @@
 use nalgebra::Matrix4;
 use std::mem;
-use wgpu::{
-    BufferAddress, InputStepMode, VertexAttributeDescriptor, VertexBufferDescriptor, VertexFormat,
-};
+use wgpu::{BufferAddress, InputStepMode, VertexAttribute, VertexBufferLayout, VertexFormat};
 use zerocopy::AsBytes;
 
 #[repr(C)]
@@ -20,27 +18,27 @@ impl ModelTransform {
         }
     }
 
-    pub fn desc<'a>() -> VertexBufferDescriptor<'a> {
-        VertexBufferDescriptor {
-            stride: mem::size_of::<ModelTransform>() as BufferAddress,
+    pub fn desc<'a>() -> VertexBufferLayout<'a> {
+        VertexBufferLayout {
+            array_stride: mem::size_of::<ModelTransform>() as BufferAddress,
             step_mode: InputStepMode::Instance,
             attributes: &[
-                VertexAttributeDescriptor {
+                VertexAttribute {
                     offset: 0,
                     format: VertexFormat::Float4,
                     shader_location: 2,
                 },
-                VertexAttributeDescriptor {
+                VertexAttribute {
                     offset: FLOAT_SIZE * 4,
                     format: VertexFormat::Float4,
                     shader_location: 3,
                 },
-                VertexAttributeDescriptor {
+                VertexAttribute {
                     offset: FLOAT_SIZE * 4 * 2,
                     format: VertexFormat::Float4,
                     shader_location: 4,
                 },
-                VertexAttributeDescriptor {
+                VertexAttribute {
                     offset: FLOAT_SIZE * 4 * 3,
                     format: VertexFormat::Float4,
                     shader_location: 5,
